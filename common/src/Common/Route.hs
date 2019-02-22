@@ -35,12 +35,16 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Login :: FrontendRoute ()
   FrontendRoute_Register :: FrontendRoute ()
   FrontendRoute_Settings :: FrontendRoute ()
-  FrontendRoute_Create :: FrontendRoute ()
-  FrontendRoute_Edit :: FrontendRoute ()
+  FrontendRoute_Editor :: FrontendRoute (Maybe (R EditorRoute))
   FrontendRoute_Article :: FrontendRoute ()
-  FrontendRoute_Profile :: FrontendRoute ()
-  FrontendRoute_ProfileFavourites :: FrontendRoute ()
+  FrontendRoute_Profile :: FrontendRoute (Maybe (R ProfileRoute))
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
+
+data EditorRoute :: * -> * where
+  EditorRoute_Slug :: EditorRoute ()
+
+data ProfileRoute :: * -> * where
+  ProfileRoute_Slug :: ProfileRoute ()
 
 backendRouteEncoder
   :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
@@ -55,14 +59,16 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Login -> PathSegment "login" $ unitEncoder mempty
       FrontendRoute_Register -> PathSegment "register" $ unitEncoder mempty
       FrontendRoute_Settings -> PathSegment "settings" $ unitEncoder mempty
-      FrontendRoute_Create -> PathSegment "editor" $ unitEncoder mempty
-      FrontendRoute_Edit -> PathSegment "editoredit" $ unitEncoder mempty
+      FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+        EditorRoute_Slug -> PathSegment "TODO" $ unitEncoder mempty
       FrontendRoute_Article -> PathSegment "article" $ unitEncoder mempty
-      FrontendRoute_Profile -> PathSegment "profile" $ unitEncoder mempty
-      FrontendRoute_ProfileFavourites -> PathSegment "profilefavs" $ unitEncoder mempty
+      FrontendRoute_Profile -> PathSegment "profile" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+        ProfileRoute_Slug -> PathSegment "TODO" $ unitEncoder mempty
 
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
+  , ''EditorRoute
+  , ''ProfileRoute
   ]

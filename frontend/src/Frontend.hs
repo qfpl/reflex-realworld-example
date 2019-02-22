@@ -1,13 +1,17 @@
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 module Frontend where
 
-import qualified Data.Map         as Map
-import           Data.Text        (Text)
-import qualified Data.Text        as T
+import           Control.Monad.Fix      (MonadFix)
+import qualified Data.Map               as Map
+import           Data.Text              (Text)
+import qualified Data.Text              as T
 import           Obelisk.Frontend
 import           Obelisk.Route
+import           Obelisk.Route.Frontend
 import           Reflex.Dom.Core
 
 import           Common.Route
@@ -23,10 +27,12 @@ htmlHead = do
   styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
   styleLink "//demo.productionready.io/main.css"
 
-htmlBody :: (DomBuilder t m) => m ()
+htmlBody :: (DomBuilder t m, MonadFix m, MonadHold t m) => RoutedT t (R FrontendRoute) m ()
 htmlBody = do
   header
-  homePage
+  subRoute_ $ \case
+    FrontendRoute_Home -> homePage
+    _                  -> blank
   footer
 
 anchor :: DomBuilder t m => Text -> Text -> m a -> m a
