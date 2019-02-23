@@ -1,11 +1,14 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeApplications      #-}
 module Frontend where
 
 import           Control.Monad.Fix      (MonadFix)
+import           Data.Bool              (bool)
+import           Data.Functor           (void)
 import qualified Data.Map               as Map
 import           Data.Text              (Text)
 import qualified Data.Text              as T
@@ -27,40 +30,71 @@ htmlHead = do
   styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
   styleLink "//demo.productionready.io/main.css"
 
-htmlBody :: (DomBuilder t m, MonadFix m, MonadHold t m) => RoutedT t (R FrontendRoute) m ()
+htmlBody :: (DomBuilder t m, PostBuild t m, MonadFix m, MonadHold t m) => RoutedT t (R FrontendRoute) m ()
 htmlBody = do
-  header
+  header (constDyn False)
   subRoute_ $ \case
     FrontendRoute_Home -> homePage
     _                  -> blank
   footer
 
-anchor :: DomBuilder t m => Text -> Text -> m a -> m a
-anchor c h m = elAttr "a" (Map.fromList [("class",c),("href",h)]) m
+anchor :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Text -> m a -> m a
+anchor cDyn h m = elDynAttr "a" ((\c -> Map.fromList [("class",c),("href",h)]) <$> cDyn) m
 
-header :: (DomBuilder t m) => m ()
-header = elClass "nav" "navbar navbar-light" $
-  elClass "div" "container" $ do
-    anchor "navbar-brand" "/" $ text "conduit"
-    elClass "ul" "nav navbar-nav pull-xs-right" $ do
-      elClass "li" "nav-item" $ anchor "navbar-link active" "/" $ text "Home"
-      elClass "li" "nav-item" $ anchor "navbar-link" "/" $ do
+data HeaderActive
+  = HeaderActiveHome
+  | HeaderActiveEditor
+  | HeaderActiveSettings
+  | HeaderActiveSignIn
+  | HeaderActiveSignUp
+  deriving Eq
+
+header :: (DomBuilder t m, PostBuild t m, MonadFix m, MonadHold t m) => Dynamic t Bool -> RoutedT t (R FrontendRoute) m ()
+header loggedIn = do
+  headerActive <- subRoute calcSelected
+  elClass "nav" "navbar navbar-light" $
+    elClass "div" "container" $ do
+      anchor "navbar-brand" "/" $ text "conduit"
+      elClass "ul" "nav navbar-nav pull-xs-right" $ do
+        navItem headerActive HeaderActiveHome "/" $ text "Home"
+        void $ widgetHold
+          (loggedOutMenu headerActive)
+          (bool (loggedOutMenu headerActive) (loggedInMenu headerActive) <$> updated loggedIn)
+
+  where
+    loggedOutMenu haDyn = do
+      navItem haDyn HeaderActiveSignIn "/" $ do
+        text "Sign in"
+      navItem haDyn HeaderActiveSignUp "/" $ do
+        text "Sign up"
+
+    loggedInMenu haDyn = do
+      navItem haDyn HeaderActiveEditor "/" $ do
         elClass "i" "ion-compose" blank
         text " "
         text "New Post"
-      elClass "li" "nav-item" $ anchor "navbar-link" "/" $ do
+      navItem haDyn HeaderActiveSettings "/" $ do
         elClass "i" "ion-gear-a" blank
         text " "
         text "Settings"
-      elClass "li" "nav-item" $ anchor "navbar-link" "/" $ do
-        text "Sign up"
 
-articlePreview :: DomBuilder t m => Text -> Text -> Text -> Text -> Text -> m ()
+    calcSelected :: Applicative m => FrontendRoute a -> RoutedT t a m (Maybe HeaderActive)
+    calcSelected = \case
+      FrontendRoute_Home     -> pure $ Just HeaderActiveHome
+      FrontendRoute_Editor   -> pure $ Just HeaderActiveEditor
+      FrontendRoute_Settings -> pure $ Just HeaderActiveEditor
+      FrontendRoute_Login    -> pure $ Just HeaderActiveSignIn
+      FrontendRoute_Register -> pure $ Just HeaderActiveSignUp
+      _                      -> pure Nothing
+    navItem haDyn ha href =
+      elClass "li" "nav-item" . anchor (("nav-link " <>) . bool "" " active" . (== Just ha) <$> haDyn) href
+
+articlePreview :: (DomBuilder t m, PostBuild t m) => Text -> Text -> Text -> Text -> Text -> m ()
 articlePreview h a dt t desc = elClass "div" "article-preview" $ do
   elClass "div" "article-meta" $ do
-    anchor "" "/" $ elAttr "img" ("src" =: h) blank
+    anchor (constDyn "") "/" $ elAttr "img" ("src" =: h) blank
     elClass "div" "info" $ do
-      anchor "/" "author" $ text a
+      anchor (constDyn "author") "/" $ text a
       elClass "span" "date" $ text dt
     elClass "button" "btn btn-outline-primary btn-sm pull-xs-right" $ do
       elClass "i" "ion-heart" blank
@@ -71,7 +105,7 @@ articlePreview h a dt t desc = elClass "div" "article-preview" $ do
       el "p" $ text desc
       el "span" $ text "Read more..."
 
-homePage :: DomBuilder t m => m ()
+homePage :: (PostBuild t m, DomBuilder t m) => m ()
 homePage = elClass "div" "home-page" $ do
   elClass "div" "banner" $
     elClass "div" "container" $ do
@@ -81,8 +115,8 @@ homePage = elClass "div" "home-page" $ do
     elClass "div" "col-md-9" $ do
       elClass "div" "feed-toggle" $
         elClass "ul" "nav nav-pills outline-active" $ do
-          elClass "li" "nav-item" $ anchor "nav-link disabled" "/" $ text "Your Feed"
-          elClass "li" "nav-item" $ anchor "nav-link active" "/" $ text "Global Feed"
+          elClass "li" "nav-item" $ anchor (constDyn "nav-link disabled") "/" $ text "Your Feed"
+          elClass "li" "nav-item" $ anchor (constDyn "nav-link active") "/" $ text "Global Feed"
       articlePreview
         "http://i.imgur.com/Qr71crq.jpg"
         "Eric Simons"
@@ -99,18 +133,20 @@ homePage = elClass "div" "home-page" $ do
       elClass "div" "sidebar" $ do
         el "p" $ text "Popular Tags"
         elClass "div" "tag-list" $ do
-          anchor "tag-pill tag-default" "/" $ text "programming"
-          anchor "tag-pill tag-default" "/" $ text "javascript"
-          anchor "tag-pill tag-default" "/" $ text "emberjs"
-          anchor "tag-pill tag-default" "/" $ text "angularjs"
-          anchor "tag-pill tag-default" "/" $ text "react"
-          anchor "tag-pill tag-default" "/" $ text "mean"
-          anchor "tag-pill tag-default" "/" $ text "node"
-          anchor "tag-pill tag-default" "/" $ text "rails"
+          tagPill "/" "programming"
+          tagPill "/" "javascript"
+          tagPill "/" "emberjs"
+          tagPill "/" "angularjs"
+          tagPill "/" "react"
+          tagPill "/" "mean"
+          tagPill "/" "node"
+          tagPill "/" "rails"
+  where
+    tagPill h t = anchor (constDyn "tag-pill tag-default") h $ text t
 
-footer :: (DomBuilder t m) => m ()
+footer :: (DomBuilder t m, PostBuild t m) => m ()
 footer = el "footer" $ elClass "div" "container" $ do
-  anchor "logo-font" "/" $ text "conduit"
+  anchor (constDyn "logo-font") "/" $ text "conduit"
   elClass "span" "attribution" $ do
     text "An interactive learning project from "
     elAttr "a" ("href" =: "https://thinkster.io") $ text "Thinkster"
