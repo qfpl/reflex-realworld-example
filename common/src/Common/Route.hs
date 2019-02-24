@@ -41,8 +41,14 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Settings :: FrontendRoute ()
   FrontendRoute_Editor :: FrontendRoute (Maybe DocumentSlug)
   FrontendRoute_Article :: FrontendRoute DocumentSlug
+  -- We actually want a username and an optional subroute, but can't figure out
+  -- how to do that just yet.
+  --FrontendRoute_Profile :: FrontendRoute (Username, Maybe (R ProfileRoute))
   FrontendRoute_Profile :: FrontendRoute Username
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
+
+data ProfileRoute :: * -> * where
+  ProfileRoute_Favourites :: ProfileRoute ()
 
 backendRouteEncoder
   :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
@@ -58,11 +64,11 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Register -> PathSegment "register" $ unitEncoder mempty
       FrontendRoute_Settings -> PathSegment "settings" $ unitEncoder mempty
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
-      -- These two encoders put a path segment that is off-spec. Can't figure how to not do this in obelisk yet
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
-      FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . (prefixTextEncoder "@") . unwrappedEncoder
+      FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . unwrappedEncoder
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
+  , ''ProfileRoute
   ]
