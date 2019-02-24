@@ -43,7 +43,7 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Article :: FrontendRoute DocumentSlug
   -- We actually want a username and an optional subroute, but can't figure out
   -- how to do that just yet.
-  --FrontendRoute_Profile :: FrontendRoute (Username, Maybe (R ProfileRoute))
+  -- FrontendRoute_Profile :: FrontendRoute (Username, Maybe (R ProfileRoute))
   FrontendRoute_Profile :: FrontendRoute Username
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
 
@@ -66,6 +66,20 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
       FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . unwrappedEncoder
+ --     FrontendRoute_Profile -> PathSegment "profile" $ unicorn
+
+unicorn :: Encoder check parse (Username, Maybe (R ProfileRoute)) PageName
+unicorn = undefined
+  -- Notes:
+  -- * chainEncoder almost looks right, but doesn't seem it
+  -- * probably just missing the implication of an important instance on Encoder
+  -- ** Category (Encoder check parse)
+  -- ** Associative (Encoder check parse) (,)
+  -- ** Monoidal (Encoder check parse) (,)
+  -- ** Cat.Functor f (Encoder check parse) (Encoder check parse)
+  -- ** PFunctor (,) (Encoder check parse) (Encoder check parse)
+  -- ** QFunctor (,) (Encoder check parse) (Encoder check parse)
+  -- ** Bifunctor (,) (Encoder check parse) (Encoder check parse)
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
