@@ -27,6 +27,20 @@ routeLinkClass
   -> m a
 routeLinkClass = routeLinkDynClass . constDyn
 
+routeLinkAttr
+  :: forall t m a r
+  .  ( DomBuilder t m
+     , RouteToUrl r m
+     , SetRoute t r m
+     , PostBuild t m
+     , MonadSample t m
+     )
+  => Map.Map AttributeName Text
+  -> r
+  -> m a
+  -> m a
+routeLinkAttr = routeLinkDynAttr . constDyn
+
 routeLinkDynClass
   :: forall t m a r
   .  ( DomBuilder t m
