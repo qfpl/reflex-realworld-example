@@ -12,18 +12,16 @@
 
 module Common.Route where
 
-import           Control.Category
+import           Control.Lens
+import           Obelisk.Route
+
+import           Control.Category      ((.))
+import           Data.Functor.Identity (Identity)
+import           Data.Functor.Sum      (Sum (InL, InR))
+import           Data.Text             (Text)
 import           Prelude               hiding (id, (.))
 
-import           Control.Lens
-import           Control.Lens.TH
-
-import           Data.Functor.Identity
-import           Data.Functor.Sum
-import           Data.Text             (Text)
-
-import           Obelisk.Route
-import           Obelisk.Route.TH
+import           Obelisk.Route.TH      (deriveRouteComponent)
 
 newtype DocumentSlug = DocumentSlug { unDocumentSlug :: Text } deriving (Eq, Ord, Show)
 makeWrapped ''DocumentSlug
