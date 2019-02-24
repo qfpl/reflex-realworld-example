@@ -1,28 +1,34 @@
-{-# LANGUAGE EmptyCase #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE EmptyCase             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Common.Route where
 
-{- -- You will probably want these imports for composing Encoders.
-import Prelude hiding (id, (.))
-import Control.Category
--}
+import           Control.Category
+import           Prelude               hiding (id, (.))
 
-import Data.Text (Text)
-import Data.Functor.Identity
-import Data.Functor.Sum
+import           Control.Lens
+import           Control.Lens.TH
 
-import Obelisk.Route
-import Obelisk.Route.TH
+import           Data.Functor.Identity
+import           Data.Functor.Sum
+import           Data.Text             (Text)
+
+import           Obelisk.Route
+import           Obelisk.Route.TH
+
+newtype DocumentSlug = DocumentSlug { unDocumentSlug :: Text } deriving (Eq, Ord, Show)
+makeWrapped ''DocumentSlug
+newtype Username = Username { unUsername :: Text } deriving (Eq, Ord, Show)
+makeWrapped ''Username
 
 data BackendRoute :: * -> * where
   -- | Used to handle unparseable routes.
@@ -35,16 +41,10 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Login :: FrontendRoute ()
   FrontendRoute_Register :: FrontendRoute ()
   FrontendRoute_Settings :: FrontendRoute ()
-  FrontendRoute_Editor :: FrontendRoute (Maybe (R EditorRoute))
-  FrontendRoute_Article :: FrontendRoute ()
-  FrontendRoute_Profile :: FrontendRoute (Maybe (R ProfileRoute))
+  FrontendRoute_Editor :: FrontendRoute (Maybe DocumentSlug)
+  FrontendRoute_Article :: FrontendRoute DocumentSlug
+  FrontendRoute_Profile :: FrontendRoute Username
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
-
-data EditorRoute :: * -> * where
-  EditorRoute_Slug :: EditorRoute ()
-
-data ProfileRoute :: * -> * where
-  ProfileRoute_Slug :: ProfileRoute ()
 
 backendRouteEncoder
   :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
@@ -59,16 +59,12 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Login -> PathSegment "login" $ unitEncoder mempty
       FrontendRoute_Register -> PathSegment "register" $ unitEncoder mempty
       FrontendRoute_Settings -> PathSegment "settings" $ unitEncoder mempty
-      FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
-        EditorRoute_Slug -> PathSegment "TODO" $ unitEncoder mempty
-      FrontendRoute_Article -> PathSegment "article" $ unitEncoder mempty
-      FrontendRoute_Profile -> PathSegment "profile" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
-        ProfileRoute_Slug -> PathSegment "TODO" $ unitEncoder mempty
-
+      FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
+      -- These two encoders put a path segment that is off-spec. Can't figure how to not do this in obelisk yet
+      FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
+      FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . (prefixTextEncoder "@") . unwrappedEncoder
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
-  , ''EditorRoute
-  , ''ProfileRoute
   ]
