@@ -9,6 +9,7 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 
 module Common.Route where
 
@@ -16,6 +17,7 @@ import           Control.Lens
 import           Obelisk.Route
 
 import           Control.Category      ((.))
+import           Control.Monad.Except  (MonadError)
 import           Data.Functor.Identity (Identity)
 import           Data.Functor.Sum      (Sum (InL, InR))
 import           Data.Text             (Text)
@@ -65,21 +67,41 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Settings -> PathSegment "settings" $ unitEncoder mempty
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
+      -- Lets ignore the favourites route for now
       FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . unwrappedEncoder
  --     FrontendRoute_Profile -> PathSegment "profile" $ unicorn
 
-unicorn :: Encoder check parse (Username, Maybe (R ProfileRoute)) PageName
-unicorn = undefined
-  -- Notes:
-  -- * chainEncoder almost looks right, but doesn't seem it
-  -- * probably just missing the implication of an important instance on Encoder
-  -- ** Category (Encoder check parse)
-  -- ** Associative (Encoder check parse) (,)
-  -- ** Monoidal (Encoder check parse) (,)
-  -- ** Cat.Functor f (Encoder check parse) (Encoder check parse)
-  -- ** PFunctor (,) (Encoder check parse) (Encoder check parse)
-  -- ** QFunctor (,) (Encoder check parse) (Encoder check parse)
-  -- ** Bifunctor (,) (Encoder check parse) (Encoder check parse)
+unicorn
+  :: (MonadError Text parse, check ~ parse)
+  => Encoder check parse (Username, Maybe (R ProfileRoute)) PageName
+unicorn = segmentParam unwrappedEncoder profileRMayEnc -- This may be nonsensical. Follow reasoning below
+  where
+    -- I know how to do these two things separately! But it doesn't feel like this is the way to go
+    -- because both encoders would encode into query params and could clash horribly
+    usernameEnc :: (Applicative check, MonadError Text parse) => Encoder check parse Username PageName
+    usernameEnc = singlePathSegmentEncoder . unwrappedEncoder
+    profileRMayEnc :: (MonadError Text check, check ~ parse) => Encoder check parse (Maybe (R ProfileRoute)) PageName
+    profileRMayEnc = maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+      ProfileRoute_Favourites -> PathEnd $ unitEncoder mempty
+    -- It feels like you want something that can peel a pathPart off and handle the rest as a sub
+    -- like the maybeEncoder, but it's a 1 or more encoder that doesn't lose the params.
+    segmentParam
+      :: MonadError Text parse
+      => Encoder check parse a Text
+      -> Encoder check parse b PageName
+      -> Encoder check parse (a,b) PageName
+    segmentParam = undefined
+    -- But I don't know whether this makes sense or could be implemented lawfully
+    -- This kinda looks like chainEncoder, but chainEncoder doesn't feel like it
+
+    -- I may just missing the implication of an important instance on Encoder
+    -- * Category (Encoder check parse)
+    -- * Associative (Encoder check parse) (,)
+    -- * Monoidal (Encoder check parse) (,)
+    -- * Cat.Functor f (Encoder check parse) (Encoder check parse)
+    -- * PFunctor (,) (Encoder check parse) (Encoder check parse)
+    -- * QFunctor (,) (Encoder check parse) (Encoder check parse)
+    -- * Bifunctor (,) (Encoder check parse) (Encoder check parse)
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute

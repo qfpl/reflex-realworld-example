@@ -17,6 +17,8 @@ import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
 import           Common.Route           (FrontendRoute (..))
 import           Frontend.HomePage      (homePage)
 import           Frontend.Nav           (nav)
+import           Frontend.Register      (register)
+import           Frontend.Login         (login)
 import           Frontend.Utils         (routeLinkClass)
 
 styleLink :: DomBuilder t m => Text -> m ()
@@ -34,8 +36,10 @@ htmlBody :: (ObeliskWidget t x (R FrontendRoute) m) => RoutedT t (R FrontendRout
 htmlBody = do
   nav (constDyn False)
   subRoute_ $ \case
-    FrontendRoute_Home -> homePage
-    _                  -> blank
+    FrontendRoute_Home     -> homePage
+    FrontendRoute_Login    -> login
+    FrontendRoute_Register -> register
+    _                      -> blank
   footer
 
 footer
