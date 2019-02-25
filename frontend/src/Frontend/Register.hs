@@ -7,11 +7,10 @@ module Frontend.Register where
 
 import           Reflex.Dom.Core
 
-import           Obelisk.Route           ()
-import           Obelisk.Route.Frontend  (R, RouteToUrl, SetRoute)
 
 import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), routeLink)
+import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute,
+                                         routeLink)
 
 import           Common.Route           (FrontendRoute (..))
 
@@ -33,25 +32,25 @@ register = elClass "div" "auth-page" $ do
         elClass "ul" "error-messages" $
           blank
         prerender blank $ el "form" $ do
-          elClass "fieldset" "form-group" $
+          _ <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Your name")
                 ])
-          elClass "fieldset" "form-group" $
+          _ <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Email")
                 ])
-          elClass "fieldset" "form-group" $
+          _ <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_inputType  .~ "password"
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
                 ])
-          (buttElt,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
+          (_,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
           pure ()
   pure ()
