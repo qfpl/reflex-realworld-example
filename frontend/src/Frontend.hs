@@ -15,7 +15,7 @@ import           Data.Text              (Text)
 import           Obelisk.Frontend       (Frontend (Frontend), ObeliskWidget)
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
                                          SetRoute, askRoute, maybeRouted,
-                                         subRoute_)
+                                         subRoute_, runRoutedT)
 
 import           Common.Route           (FrontendRoute (..))
 import           Frontend.Article       (article)
@@ -48,7 +48,9 @@ htmlBody = do
     FrontendRoute_Register -> register
     FrontendRoute_Article  -> askRoute >>= article
     FrontendRoute_Settings -> settings
-    FrontendRoute_Profile  -> askRoute >>= profile
+    FrontendRoute_Profile  -> do
+      tupleDyn <- askRoute
+      runRoutedT (profile (fst <$> tupleDyn)) (snd <$> tupleDyn)
     FrontendRoute_Editor   -> maybeRouted blank
     _                      -> blank
   footer

@@ -26,9 +26,9 @@ articlePreview
   => DocumentSlug -> Text -> Username -> Text -> Text -> Text -> Text -> m ()
 articlePreview s h u a dt t desc = elClass "div" "article-preview" $ do
   elClass "div" "article-meta" $ do
-    routeLink (FrontendRoute_Profile :/ u) $ elAttr "img" ("src" =: h) blank
+    routeLink (FrontendRoute_Profile :/ (u,Nothing)) $ elAttr "img" ("src" =: h) blank
     elClass "div" "info" $ do
-      routeLinkDynClass (constDyn "author") (FrontendRoute_Profile :/ u) $ text a
+      routeLinkDynClass (constDyn "author") (FrontendRoute_Profile :/ (u,Nothing)) $ text a
       elClass "span" "date" $ text dt
     elClass "button" "btn btn-outline-primary btn-sm pull-xs-right" $ do
       elClass "i" "ion-heart" blank

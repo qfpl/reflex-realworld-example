@@ -43,10 +43,7 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Settings :: FrontendRoute ()
   FrontendRoute_Editor :: FrontendRoute (Maybe DocumentSlug)
   FrontendRoute_Article :: FrontendRoute DocumentSlug
-  -- We actually want a username and an optional subroute, but can't figure out
-  -- how to do that just yet.
-  -- FrontendRoute_Profile :: FrontendRoute (Username, Maybe (R ProfileRoute))
-  FrontendRoute_Profile :: FrontendRoute Username
+  FrontendRoute_Profile :: FrontendRoute (Username, Maybe (R ProfileRoute))
   -- This type is used to define frontend routes, i.e. ones for which the backend will serve the frontend.
 
 data ProfileRoute :: * -> * where
@@ -68,7 +65,9 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
       -- Lets ignore the favourites route for now
-      FrontendRoute_Profile -> PathSegment "profile" $ singlePathSegmentEncoder . unwrappedEncoder
+      FrontendRoute_Profile -> PathSegment "profile" $
+        pathSegmentConsEncoder unwrappedEncoder $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+          ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
  --     FrontendRoute_Profile -> PathSegment "profile" $ unicorn
 
 unicorn
