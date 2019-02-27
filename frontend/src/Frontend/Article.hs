@@ -7,19 +7,16 @@ module Frontend.Article where
 
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
+import           Obelisk.Route.Frontend (Routed, askRoute)
 
-import           Common.Route           (FrontendRoute (..), DocumentSlug)
+import           Common.Route           (DocumentSlug)
 
 article
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
+     , Routed t DocumentSlug m
      )
-  => Dynamic t DocumentSlug
-  -> m ()
-article ds = elClass "div" "settings-page" $ do
-  blank
+  => m ()
+article = elClass "div" "settings-page" $ do
+  docSlugDyn <- askRoute
+  display docSlugDyn

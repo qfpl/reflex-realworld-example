@@ -8,14 +8,11 @@ module Frontend where
 
 import           Reflex.Dom.Core
 
-import           Control.Monad.Trans    (lift)
-import           Data.Functor           (void)
 import qualified Data.Map               as Map
 import           Data.Text              (Text)
 import           Obelisk.Frontend       (Frontend (Frontend), ObeliskWidget)
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
-                                         SetRoute, askRoute, maybeRouted,
-                                         subRoute_, runRoutedT)
+                                         SetRoute, subRoute_)
 
 import           Common.Route           (FrontendRoute (..))
 import           Frontend.Article       (article)
@@ -46,13 +43,10 @@ htmlBody = do
     FrontendRoute_Home     -> homePage
     FrontendRoute_Login    -> login
     FrontendRoute_Register -> register
-    FrontendRoute_Article  -> askRoute >>= article
+    FrontendRoute_Article  -> article
     FrontendRoute_Settings -> settings
-    FrontendRoute_Profile  -> do
-      tupleDyn <- askRoute
-      runRoutedT (profile (fst <$> tupleDyn)) (snd <$> tupleDyn)
-    FrontendRoute_Editor   -> maybeRouted blank
-    _                      -> blank
+    FrontendRoute_Profile  -> profile
+    FrontendRoute_Editor   -> editor
   footer
 
 footer

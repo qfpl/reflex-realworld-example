@@ -7,26 +7,19 @@ module Frontend.Profile where
 
 import           Reflex.Dom.Core
 
-import           Control.Monad.Fix      (MonadFix)
-import           Data.Functor           (void)
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, Routed,
-                                         RoutedT, SetRoute, askRoute,
-                                         maybeRoute, routeLink)
+import           Obelisk.Route.Frontend (R, Routed, askRoute)
 
-import           Common.Route           (FrontendRoute (..), ProfileRoute (..),
-                                         Username)
+import           Common.Route           (ProfileRoute (..), Username)
 
 profile
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
-     , MonadFix m
-     , MonadHold t m
+     , Routed t (Username, Maybe (R ProfileRoute)) m
      )
-  => Dynamic t Username
-  -> RoutedT t (Maybe (R ProfileRoute)) m ()
-profile usernameDyn = elClass "div" "profile-page" $ do
-  void $ maybeRoute (text "No favs") (text "Favs")
+  => m ()
+profile = elClass "div" "profile-page" $ do
+  tupleDyn <- askRoute
+  let username = fst <$> tupleDyn
+  let sub      = snd <$> tupleDyn
+  display username
+  display sub

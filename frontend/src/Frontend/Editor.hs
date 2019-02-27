@@ -7,18 +7,33 @@ module Frontend.Editor where
 
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
+import           Control.Monad.Fix      (MonadFix)
+import           Obelisk.Route.Frontend (Routed, RoutedT, askRoute, maybeRoute_)
 
-import           Common.Route           (FrontendRoute (..), DocumentSlug)
+import           Common.Route           (DocumentSlug)
 
 editor
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
+     , MonadFix m
+     , MonadHold t m
+     )
+  => RoutedT t (Maybe DocumentSlug) m ()
+editor = maybeRoute_ create edit
+
+create
+  :: ( DomBuilder t m
      )
   => m ()
-editor = elClass "div" "editor-page" $ do
+create = elClass "div" "editor-page" $ do
   blank
+
+edit
+  :: ( DomBuilder t m
+     , PostBuild t m
+     , Routed t DocumentSlug m
+     )
+  => m ()
+edit = elClass "div" "editor-page" $ do
+  slugDyn <- askRoute
+  display slugDyn
