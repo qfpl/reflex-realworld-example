@@ -64,7 +64,9 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
       FrontendRoute_Profile -> PathSegment "profile" $
-        pathSegmentConsEncoder unwrappedEncoder $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+        -- This depends on https://github.com/obsidiansystems/obelisk/pull/362 , but you'll get this automatically
+        -- with ob run anyway. Just don't copy and paste this to other projects yet!
+        pathSegmentTupleEncoder unwrappedEncoder $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
           ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
 
 concat <$> mapM deriveRouteComponent

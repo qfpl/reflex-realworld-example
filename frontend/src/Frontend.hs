@@ -12,7 +12,7 @@ import qualified Data.Map               as Map
 import           Data.Text              (Text)
 import           Obelisk.Frontend       (Frontend (Frontend), ObeliskWidget)
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
-                                         SetRoute, subRoute_)
+                                         SetRoute, subRoute_, pathSegmentTupleRoute)
 
 import           Common.Route           (FrontendRoute (..))
 import           Frontend.Article       (article)
@@ -45,7 +45,7 @@ htmlBody = do
     FrontendRoute_Register -> register
     FrontendRoute_Article  -> article
     FrontendRoute_Settings -> settings
-    FrontendRoute_Profile  -> profile
+    FrontendRoute_Profile  -> pathSegmentTupleRoute profile
     FrontendRoute_Editor   -> editor
   footer
 
