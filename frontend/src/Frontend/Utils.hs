@@ -25,7 +25,7 @@ routeLinkClass
   -> r
   -> m a
   -> m a
-routeLinkClass = routeLinkDynClass . constDyn
+routeLinkClass c = routeLinkDynClass (constDyn c) . constDyn
 
 routeLinkAttr
   :: forall t m a r
@@ -39,7 +39,7 @@ routeLinkAttr
   -> r
   -> m a
   -> m a
-routeLinkAttr = routeLinkDynAttr . constDyn
+routeLinkAttr attrs = routeLinkDynAttr (constDyn attrs) . constDyn
 
 routeLinkDynClass
   :: forall t m a r
@@ -50,7 +50,7 @@ routeLinkDynClass
      , MonadSample t m
      )
   => Dynamic t Text
-  -> r
+  -> Dynamic t r
   -> m a
   -> m a
 routeLinkDynClass cDyn = routeLinkDynAttr (("class" =:) <$> cDyn)
@@ -64,18 +64,18 @@ routeLinkDynAttr
      , MonadSample t m
      )
   => Dynamic t (Map.Map AttributeName Text)
-  -> r
+  -> Dynamic t r
   -> m a
   -> m a
-routeLinkDynAttr attrDyn r m = do
+routeLinkDynAttr attrDyn rDyn m = do
   enc <- askRouteToUrl
-  let addHref = Map.insert "href" (enc r)
-  initAttr <- fmap addHref <$> sample . current $ attrDyn
-  modAttrs <- dynamicAttributesToModifyAttributesWithInitial initAttr (addHref <$> attrDyn)
+  let attrsDyn = (Map.insert "href" . enc <$> rDyn <*> attrDyn)
+  initAttrs <- sample . current $ attrsDyn
+  modAttrs <- dynamicAttributesToModifyAttributesWithInitial initAttrs attrsDyn
   let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
         & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)
-        & elementConfig_initialAttributes .~ initAttr
+        & elementConfig_initialAttributes .~ initAttrs
         & elementConfig_modifyAttributes  .~ modAttrs
   (e, a) <- element "a" cfg m
-  setRoute $ r <$ domEvent Click e
+  setRoute $ current rDyn <@ domEvent Click e
   return a

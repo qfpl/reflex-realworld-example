@@ -14,7 +14,7 @@ import           Obelisk.Route.Frontend (RouteToUrl, SetRoute, routeLink)
 
 import           Common.Route           (DocumentSlug, FrontendRoute (..),
                                          Username)
-import           Frontend.Utils         (routeLinkDynClass)
+import           Frontend.Utils         (routeLinkClass)
 
 articlePreview
   :: ( DomBuilder t m
@@ -28,13 +28,13 @@ articlePreview s h u a dt t desc = elClass "div" "article-preview" $ do
   elClass "div" "article-meta" $ do
     routeLink (FrontendRoute_Profile :/ (u,Nothing)) $ elAttr "img" ("src" =: h) blank
     elClass "div" "info" $ do
-      routeLinkDynClass (constDyn "author") (FrontendRoute_Profile :/ (u,Nothing)) $ text a
+      routeLinkClass "author" (FrontendRoute_Profile :/ (u,Nothing)) $ text a
       elClass "span" "date" $ text dt
     elClass "button" "btn btn-outline-primary btn-sm pull-xs-right" $ do
       elClass "i" "ion-heart" blank
       text " "
       text "29"
-    routeLinkDynClass "preview-link" (FrontendRoute_Article :/ s) $ do
+    routeLinkClass "preview-link" (FrontendRoute_Article :/ s) $ do
       el "h1" $ text t
       el "p" $ text desc
       el "span" $ text "Read more..."
