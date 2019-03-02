@@ -5,3 +5,7 @@ result-ios
 result-exe
 .attr-cache
 ghcid-output.txt
+.cabal-sandbox
+cabal.sandbox.config
+TAGS
+dist/

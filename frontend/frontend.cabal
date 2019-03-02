@@ -7,13 +7,27 @@ library
   hs-source-dirs: src
   build-depends: base
                , common
+               , containers
+               , dependent-sum
+               , lens 
                , obelisk-frontend
                , obelisk-route
                , reflex-dom
                , obelisk-generated-static
                , text
   exposed-modules:
-    Frontend
+      Frontend
+    , Frontend.Article
+    , Frontend.ArticlePreview
+    , Frontend.Editor
+    , Frontend.HomePage
+    , Frontend.Login
+    , Frontend.Nav
+    , Frontend.Profile
+    , Frontend.Register
+    , Frontend.Settings
+    , Frontend.Utils
+              
   ghc-options: -Wall
 
 executable frontend
