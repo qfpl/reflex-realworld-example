@@ -71,13 +71,15 @@ article = elClass "div" "article-page" $ do
       rec follows <- foldDyn ($) (10::Int) ((+1) <$ followClick)
           (followElt,_) <- elClass' "button" "btn btn-sm btn-outline-secondary action-btn" $ do
             elClass "i" "ion-plus-round" blank
-            text " Follow Eric Simons"
+            text " Follow Eric Simons ("
             elClass "span" "counter" $ display follows
+            text ")"
           let followClick = domEvent Click followElt
       rec favourites <- foldDyn ($) (22::Int) ((+1) <$ favouriteClick)
           (favouriteElt,_) <- elClass' "button" "btn btn-sm btn-outline-primary action-btn" $ do
-            elClass "i" "ion-plus-round" blank
-            text " Follow Eric Simons"
+            elClass "i" "ion-heart" blank
+            text " Favourite Post ("
             elClass "span" "counter" $ display favourites
+            text ")"
           let favouriteClick = domEvent Click favouriteElt
       pure ()
