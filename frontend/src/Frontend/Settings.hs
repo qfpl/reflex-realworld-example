@@ -3,6 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+
 module Frontend.Settings where
 
 import           Reflex.Dom.Core
@@ -13,6 +16,7 @@ settings
   :: ( DomBuilder t m
      , PostBuild t m
      , Prerender js m
+     , MonadHold t m
      )
   => m ()
 settings = elClass "div" "settings-page" $ do
@@ -56,5 +60,8 @@ settings = elClass "div" "settings-page" $ do
                   [("class","form-control")
                   ,("placeholder","Password")
                   ]))
-            (_,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Update Settings"
+            (bElt,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Update Settings"
+            let updateE = domEvent Click bElt
+            clicked :: Dynamic t Int <- count updateE
+            display clicked
             pure ()

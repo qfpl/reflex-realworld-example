@@ -3,20 +3,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Frontend.Editor where
 
 import           Reflex.Dom.Core
 
-import           Control.Monad.Fix      (MonadFix)
 import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (Routed, RoutedT, askRoute, maybeRoute_)
+import           Obelisk.Route.Frontend (RoutedT)
 
 import           Common.Route           (DocumentSlug)
 
 editor
   :: ( DomBuilder t m
      , PostBuild t m
-     , MonadFix m
      , MonadHold t m
      , Prerender js m
      )
@@ -48,7 +47,7 @@ editor = elClass "div" "editor-page" $ do
                   ]))
             (bElt,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Publish Article"
             let publishE = domEvent Click bElt
-            clicked <- count publishE
+            clicked :: Dynamic t Int <- count publishE
             display clicked
             pure ()
   pure ()
