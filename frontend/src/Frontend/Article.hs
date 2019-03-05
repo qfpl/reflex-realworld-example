@@ -11,6 +11,7 @@ module Frontend.Article where
 import           Reflex.Dom.Core
 
 import           Control.Monad.Fix      (MonadFix)
+import qualified Data.Map               as Map
 import           Data.Text              (Text)
 import           JSDOM.Document         (createElement)
 import           JSDOM.Element          (setInnerHTML)
@@ -23,7 +24,8 @@ import           Common.Route           (DocumentSlug, FrontendRoute (..),
 import           Frontend.Utils         (routeLinkClass)
 
 article
-  :: ( DomBuilder t m
+  :: forall t m js
+  .  ( DomBuilder t m
      , Routed t DocumentSlug m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
@@ -51,6 +53,8 @@ article = elClass "div" "article-page" $ do
         -- mostly works. See https://github.com/qfpl/reflex-dom-template for a
         -- potentially more robust solution (we could filter out js handler attrs
         -- with something like that).
+        -- It's worth noting that the react demo app does exactly what this does:
+        -- https://github.com/gothinkster/react-redux-realworld-example-app/blob/master/src/components/Article/index.js#L60
         e <- createElement d ("div" :: String)
         setInnerHTML e htmlT
         pure e
@@ -58,6 +62,32 @@ article = elClass "div" "article-page" $ do
     el "hr" blank
     elClass "div" "row article-actions"
       articleMeta
+    elClass "div" "row" $
+      elClass "div" "col-xs-12 col-md-8 offset-md-2" $ do
+        prerender blank $ elClass "form" "card comment-form" $ do
+          _ <- elClass "div" "card-block" $ do
+            textArea $ def
+                & textAreaConfig_attributes .~ (constDyn (Map.fromList
+                  [("class","form-control")
+                  ,("placeholder","Write a comment")
+                  ,("rows","3")
+                  ]))
+          postE <- elClass "div" "card-footer" $ do
+            (postElt,_) <- elClass' "button" "btn btn-sm btn-primary" $ text "Post Comment"
+            pure $ domEvent Click postElt
+          postsDyn :: Dynamic t Int <- count postE
+          display postsDyn
+          pure ()
+        elClass "div" "card" $ do
+          elClass "div" "card-block" $ do
+            elClass "p" "card-text" $ text "With supporting text below as a natural lead-in to additional content."
+          elClass "div" "card-footer" $ do
+            let authorRoute = FrontendRoute_Profile :/ (Username "foo", Nothing)
+            routeLinkClass "comment-author" authorRoute $
+              elAttr "img" (Map.fromList [("src","http://i.imgur.com/Qr71crq.jpg"),("class","comment-author-img")]) blank
+            text " "
+            routeLinkClass "comment-author" authorRoute $ text "Jacob Schmidt"
+            elClass "span" "date-posted" $ text "Dec 29th"
 
   where
     articleMeta = elClass "div" "article-meta" $ do
