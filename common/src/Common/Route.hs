@@ -69,6 +69,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         let profileRouteEncoder = pathComponentEncoder $ \case
               ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
         in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) )
+
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
