@@ -12,7 +12,7 @@ import qualified Data.Map               as Map
 import           Data.Text              (Text)
 import           Obelisk.Frontend       (Frontend (Frontend), ObeliskWidget)
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
-                                         SetRoute, subRoute_, pathSegmentTupleRoute)
+                                         SetRoute, subRoute_)
 
 import           Common.Route           (FrontendRoute (..))
 import           Frontend.Article       (article)
@@ -23,7 +23,7 @@ import           Frontend.Nav           (nav)
 import           Frontend.Profile       (profile)
 import           Frontend.Register      (register)
 import           Frontend.Settings      (settings)
-import           Frontend.Utils         (routeLinkClass)
+import           Frontend.Utils         (routeLinkClass, pathSegmentSubRoute)
 
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
@@ -45,7 +45,7 @@ htmlBody = do
     FrontendRoute_Register -> register
     FrontendRoute_Article  -> article
     FrontendRoute_Settings -> settings
-    FrontendRoute_Profile  -> pathSegmentTupleRoute profile
+    FrontendRoute_Profile  -> pathSegmentSubRoute profile
     FrontendRoute_Editor   -> editor
   footer
 

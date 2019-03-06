@@ -1,18 +1,27 @@
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Frontend.Utils where
 
-import           Control.Lens           hiding (element)
+import           Control.Lens               hiding (element)
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Data.Proxy             (Proxy (Proxy))
-import           Data.Text              (Text)
-import           Obelisk.Route.Frontend (RouteToUrl, SetRoute, askRouteToUrl,
-                                         setRoute)
+import           Control.Monad.Trans        (lift)
+import qualified Data.Map                   as Map
+import           Data.Proxy                 (Proxy (Proxy))
+import           Data.Text                  (Text)
+import           Obelisk.Route.Frontend     (RouteToUrl, RoutedT, SetRoute,
+                                             askRoute, askRouteToUrl,
+                                             runRoutedT, setRoute)
 
 -- These should probably be in obelisk!
+
+pathSegmentSubRoute :: (Monad m, Functor (Dynamic t)) => (Dynamic t a -> RoutedT t b m c) -> RoutedT t (a, b) m c
+pathSegmentSubRoute f = do
+  rDyn <- askRoute
+  lift $ runRoutedT (f (Prelude.fst <$> rDyn)) (Prelude.snd <$> rDyn)
+
 routeLinkClass
   :: forall t m a r
   .  ( DomBuilder t m

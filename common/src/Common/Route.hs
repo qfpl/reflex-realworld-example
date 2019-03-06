@@ -6,24 +6,25 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 
 module Common.Route where
 
-import           Control.Lens
+import           Control.Lens                  hiding (bimap)
 import           Obelisk.Route
+import           Prelude                       hiding (id, (.))
 
-import           Control.Category      ((.))
-import           Data.Functor.Identity (Identity)
-import           Data.Functor.Sum      (Sum (InL, InR))
-import           Data.Text             (Text)
-import           Prelude               hiding (id, (.))
+import           Control.Categorical.Bifunctor (bimap)
+import           Control.Category              ((.))
+import           Data.Functor.Identity         (Identity)
+import           Data.Functor.Sum              (Sum (InL, InR))
+import           Data.Text                     (Text)
 
-import           Obelisk.Route.TH      (deriveRouteComponent)
+import           Obelisk.Route.TH              (deriveRouteComponent)
 
 newtype DocumentSlug = DocumentSlug { unDocumentSlug :: Text } deriving (Eq, Ord, Show)
 makeWrapped ''DocumentSlug
@@ -65,11 +66,9 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Editor -> PathSegment "editor" $ maybeEncoder (unitEncoder mempty) (singlePathSegmentEncoder . unwrappedEncoder)
       FrontendRoute_Article -> PathSegment "article" $ singlePathSegmentEncoder . unwrappedEncoder
       FrontendRoute_Profile -> PathSegment "profile" $
-        -- This depends on https://github.com/obsidiansystems/obelisk/pull/362 , but you'll get this automatically
-        -- with ob run anyway. Just don't copy and paste this to other projects yet!
-        pathSegmentTupleEncoder unwrappedEncoder $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
-          ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
-
+        let profileRouteEncoder = pathComponentEncoder $ \case
+              ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
+        in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) )
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
