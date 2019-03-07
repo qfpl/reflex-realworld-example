@@ -4,26 +4,37 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE TypeApplications      #-}
 module Frontend where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Data.Text              (Text)
-import           Obelisk.Frontend       (Frontend (Frontend), ObeliskWidget)
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT,
-                                         SetRoute, subRoute_)
+import           Data.Functor.Identity                   (Identity, runIdentity)
+import qualified Data.Map                                as Map
+import           Data.Text                               (Text)
+import           Obelisk.Frontend                        (Frontend (Frontend),
+                                                          ObeliskWidget)
+import           Obelisk.Route.Frontend                  (pattern (:/), R,
+                                                          RouteToUrl, RoutedT,
+                                                          SetRoute, subRoute_)
+import           Servant.Common.Req                      (reqSuccess)
 
-import           Common.Route           (FrontendRoute (..))
-import           Frontend.Article       (article)
-import           Frontend.Editor        (editor)
-import           Frontend.HomePage      (homePage)
-import           Frontend.Login         (login)
-import           Frontend.Nav           (nav)
-import           Frontend.Profile       (profile)
-import           Frontend.Register      (register)
-import           Frontend.Settings      (settings)
-import           Frontend.Utils         (routeLinkClass, pathSegmentSubRoute)
+import           Common.Route                            (FrontendRoute (..))
+import           Frontend.Article                        (article)
+import           Frontend.Editor                         (editor)
+import           Frontend.HomePage                       (homePage)
+import           Frontend.Login                          (login)
+import           Frontend.Nav                            (nav)
+import           Frontend.Profile                        (profile)
+import           Frontend.Register                       (register)
+import           Frontend.Settings                       (settings)
+import           Frontend.Utils                          (pathSegmentSubRoute,
+                                                          routeLinkClass)
+
+import           RealWorld.Conduit.Api
+import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import           RealWorld.Conduit.Client
 
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
@@ -36,7 +47,10 @@ htmlHead = do
   styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
   styleLink "//demo.productionready.io/main.css"
 
-htmlBody :: (ObeliskWidget t x (R FrontendRoute) m) => RoutedT t (R FrontendRoute) m ()
+htmlBody
+  :: ( ObeliskWidget t x (R FrontendRoute) m
+     )
+  => RoutedT t (R FrontendRoute) m ()
 htmlBody = do
   nav (constDyn False)
   subRoute_ $ \case
@@ -47,6 +61,14 @@ htmlBody = do
     FrontendRoute_Settings -> settings
     FrontendRoute_Profile  -> pathSegmentSubRoute profile
     FrontendRoute_Editor   -> editor
+  prerender blank $ do
+    let c = getClient @Identity
+    b <- button "Click Me"
+    resE <- c^.apiUsers.usersClientLogin.to (\f -> f (constDyn (pure . pure $ Credentials "ben.kolera@gmail.com" "ass")) b)
+    resDyn <- holdDyn Nothing $ (reqSuccess . runIdentity) <$> resE
+    display resDyn
+
+    pure ()
   footer
 
 footer

@@ -15,6 +15,9 @@ library
                , reflex-dom
                , obelisk-generated-static
                , text
+               , servant
+               , servant-client-core
+               , servant-reflex
   exposed-modules:
       Frontend
     , Frontend.Article

@@ -9,6 +9,7 @@ library
                , obelisk-route
                , lens
                , mtl
+               , servant
                , text
 
   exposed-modules:

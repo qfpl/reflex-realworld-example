@@ -2,10 +2,18 @@
 , iosSdkVersion ? "10.2"
 }:
 with import ./.obelisk/impl { inherit system iosSdkVersion; };
-project ./. ({ ... }: {
+project ./. ({ pkgs, ... }: {
   android.applicationId = "systems.obsidian.obelisk.examples.minimal";
   android.displayName = "Obelisk Minimal Example";
   ios.bundleIdentifier = "systems.obsidian.obelisk.examples.minimal";
   ios.bundleName = "Obelisk Minimal Example";
   withHoogle = true;
+  overrides = (super: self: {
+    servant-reflex = self.callCabal2nix "servant-reflex" (pkgs.fetchFromGitHub {
+      owner = "imalsogreg";
+      repo  = "servant-reflex";
+      rev = "ba8d4f8a269d785ed7e62f11eddb392d9f582e19";
+      sha256 = "0zppzl1ii01bzjrfj5x71vff5ivpcngrs0njvjawx6hf985x2zbk";
+    }) {};
+  });
 })
