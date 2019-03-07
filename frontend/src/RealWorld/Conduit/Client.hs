@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds      #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -12,6 +12,7 @@ import           Reflex
 
 import           Data.Proxy                              (Proxy (Proxy))
 import           Data.Text                               (Text)
+import           Servant.API                             ((:<|>)((:<|>)))
 import           Servant.Reflex                          (BaseUrl (BaseFullUrl),
                                                           Scheme (Http),
                                                           SupportsServantReflex)
@@ -22,11 +23,16 @@ import           RealWorld.Conduit.Api                   (Api, api)
 import           RealWorld.Conduit.Api.Namespace         (Namespace)
 import           RealWorld.Conduit.Api.Users.Account     (Account)
 import           RealWorld.Conduit.Api.Users.Credentials (Credentials)
+import           RealWorld.Conduit.Api.Users.Registrant  (Registrant)
 
 
 data UsersClient f t m = UsersClient
   { _usersLogin
     :: Dynamic t (f (Either Text (Namespace "user" Credentials)))
+    -> Event t ()
+    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
+  , _usersRegister
+    :: Dynamic t (f (Either Text (Namespace "user" Registrant)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "user" Account))))
   }
@@ -50,4 +56,4 @@ getClient = ApiClient { .. } :: ApiClient f t m
     apiUsersC = c
     _apiUsers = UsersClient { .. }
       where
-        _usersLogin = apiUsersC
+        _usersLogin :<|> _usersRegister = apiUsersC

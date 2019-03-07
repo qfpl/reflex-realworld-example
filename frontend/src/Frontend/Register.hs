@@ -5,17 +5,20 @@
 {-# LANGUAGE PatternSynonyms       #-}
 module Frontend.Register where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
 
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute,
-                                         routeLink)
+import qualified Data.Map                               as Map
+import           Obelisk.Route.Frontend                 (pattern (:/), R,
+                                                         RouteToUrl, SetRoute,
+                                                         routeLink)
+import           Servant.Common.Req                     (reqSuccess)
 
-import           Common.Route           (FrontendRoute (..))
-
-import           RealWorld.Conduit.Api.Namespace         (Namespace(Namespace))
-import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import           Common.Route                           (FrontendRoute (..))
+import           Frontend.Utils                         (buttonClass)
+import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace))
+import           RealWorld.Conduit.Api.Users.Registrant (Registrant (Registrant))
 import           RealWorld.Conduit.Client
 
 
@@ -25,6 +28,9 @@ register
      , Prerender js m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
+     , TriggerEvent t m
+     , PerformEvent t m
+     , MonadHold t m
      )
   => m ()
 register = elClass "div" "auth-page" $ do
@@ -56,6 +62,13 @@ register = elClass "div" "auth-page" $ do
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
                 ])
-          (submitE,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
+          submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
+          let registrant = Registrant
+                <$> usernameI ^. textInput_value
+                <*> emailI ^. textInput_value
+                <*> passI ^. textInput_value
+          resE <- getClient ^. apiUsers . usersRegister . to (\f -> f (pure . pure . Namespace <$> registrant) submitE)
+          resD <- holdDyn Nothing (reqSuccess . runIdentity <$> resE)
+          display resD
           pure ()
   pure ()
