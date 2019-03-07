@@ -14,6 +14,11 @@ import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute,
 
 import           Common.Route           (FrontendRoute (..))
 
+import           RealWorld.Conduit.Api.Namespace         (Namespace(Namespace))
+import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import           RealWorld.Conduit.Client
+
+
 register
   :: ( DomBuilder t m
      , PostBuild t m
@@ -32,25 +37,25 @@ register = elClass "div" "auth-page" $ do
         elClass "ul" "error-messages" $
           blank
         prerender blank $ el "form" $ do
-          _ <- elClass "fieldset" "form-group" $
+          usernameI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Your name")
                 ])
-          _ <- elClass "fieldset" "form-group" $
+          emailI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Email")
                 ])
-          _ <- elClass "fieldset" "form-group" $
+          passI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_inputType  .~ "password"
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
                 ])
-          (_,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
+          (submitE,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
           pure ()
   pure ()

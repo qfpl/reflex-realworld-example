@@ -5,12 +5,21 @@
 {-# LANGUAGE PatternSynonyms       #-}
 module Frontend.Login where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
+import           Data.Functor.Identity                   (runIdentity)
+import qualified Data.Map                                as Map
+import           Obelisk.Route.Frontend                  (pattern (:/), R,
+                                                          RouteToUrl, SetRoute,
+                                                          routeLink)
+import           Servant.Common.Req                      (reqSuccess)
 
-import           Common.Route           (FrontendRoute (..))
+import           Common.Route                            (FrontendRoute (..))
+import           Frontend.Utils                          (buttonClass)
+import           RealWorld.Conduit.Api.Namespace         (Namespace (Namespace))
+import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import           RealWorld.Conduit.Client
 
 login
   :: ( DomBuilder t m
@@ -18,6 +27,9 @@ login
      , Prerender js m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
+     , TriggerEvent t m
+     , PerformEvent t m
+     , MonadHold t m
      )
   => m ()
 login = elClass "div" "auth-page" $ do
@@ -30,19 +42,25 @@ login = elClass "div" "auth-page" $ do
         elClass "ul" "error-messages" $
           blank
         prerender blank $ el "form" $ do
-          _ <- elClass "fieldset" "form-group" $
+          emailI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Email")
                 ])
-          _ <- elClass "fieldset" "form-group" $
+          passI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_inputType  .~ "password"
               & textInputConfig_attributes .~ constDyn (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
                 ])
-          (_,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Sign in"
+          submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Sign in"
+          let credentials = Credentials
+                <$> emailI ^. textInput_value
+                <*> passI ^. textInput_value
+          resE <- getClient ^. apiUsers . usersLogin . to (\f -> f (pure . pure . Namespace <$> credentials) submitE)
+          resD <- holdDyn Nothing (reqSuccess . runIdentity <$> resE)
+          display resD
           pure ()
   pure ()

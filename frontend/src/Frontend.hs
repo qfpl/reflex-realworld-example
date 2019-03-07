@@ -7,10 +7,8 @@
 {-# LANGUAGE TypeApplications      #-}
 module Frontend where
 
-import           Control.Lens
 import           Reflex.Dom.Core
 
-import           Data.Functor.Identity                   (Identity, runIdentity)
 import qualified Data.Map                                as Map
 import           Data.Text                               (Text)
 import           Obelisk.Frontend                        (Frontend (Frontend),
@@ -18,7 +16,6 @@ import           Obelisk.Frontend                        (Frontend (Frontend),
 import           Obelisk.Route.Frontend                  (pattern (:/), R,
                                                           RouteToUrl, RoutedT,
                                                           SetRoute, subRoute_)
-import           Servant.Common.Req                      (reqSuccess)
 
 import           Common.Route                            (FrontendRoute (..))
 import           Frontend.Article                        (article)
@@ -31,10 +28,6 @@ import           Frontend.Register                       (register)
 import           Frontend.Settings                       (settings)
 import           Frontend.Utils                          (pathSegmentSubRoute,
                                                           routeLinkClass)
-
-import           RealWorld.Conduit.Api
-import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
-import           RealWorld.Conduit.Client
 
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
@@ -61,14 +54,6 @@ htmlBody = do
     FrontendRoute_Settings -> settings
     FrontendRoute_Profile  -> pathSegmentSubRoute profile
     FrontendRoute_Editor   -> editor
-  prerender blank $ do
-    let c = getClient @Identity
-    b <- button "Click Me"
-    resE <- c^.apiUsers.usersClientLogin.to (\f -> f (constDyn (pure . pure $ Credentials "ben.kolera@gmail.com" "ass")) b)
-    resDyn <- holdDyn Nothing $ (reqSuccess . runIdentity) <$> resE
-    display resDyn
-
-    pure ()
   footer
 
 footer

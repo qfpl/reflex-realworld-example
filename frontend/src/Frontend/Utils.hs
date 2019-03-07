@@ -22,6 +22,14 @@ pathSegmentSubRoute f = do
   rDyn <- askRoute
   lift $ runRoutedT (f (Prelude.fst <$> rDyn)) (Prelude.snd <$> rDyn)
 
+buttonClass :: forall t m a. (DomBuilder t m) => Text -> m a -> m (Event t ())
+buttonClass c m = do
+  let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
+        & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)
+        & elementConfig_initialAttributes .~ ("class" =: c)
+  (e, _) <- element "button" cfg m
+  pure $ domEvent Click e
+
 routeLinkClass
   :: forall t m a r
   .  ( DomBuilder t m

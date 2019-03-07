@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -18,16 +19,16 @@ import           Servant.Reflex.Multi                    (ClientMulti,
                                                           ReqResult, clientA)
 
 import           RealWorld.Conduit.Api                   (Api, api)
-import           RealWorld.Conduit.Api.Users             (UsersApi)
+import           RealWorld.Conduit.Api.Namespace         (Namespace)
 import           RealWorld.Conduit.Api.Users.Account     (Account)
 import           RealWorld.Conduit.Api.Users.Credentials (Credentials)
 
 
 data UsersClient f t m = UsersClient
-  { _usersClientLogin
-    :: Dynamic t (f (Either Text Credentials))
+  { _usersLogin
+    :: Dynamic t (f (Either Text (Namespace "user" Credentials)))
     -> Event t ()
-    -> m (Event t (f (ReqResult () Account)))
+    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
   }
 makeLenses ''UsersClient
 
@@ -49,4 +50,4 @@ getClient = ApiClient { .. } :: ApiClient f t m
     apiUsersC = c
     _apiUsers = UsersClient { .. }
       where
-        _usersClientLogin = apiUsersC
+        _usersLogin = apiUsersC
