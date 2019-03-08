@@ -20,7 +20,6 @@ import           Common.Route                           (FrontendRoute (..))
 import           Frontend.Utils                         (buttonClass)
 import           Frontend.FrontendStateT                 (FrontendEvent(LogIn))
 import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
-import           RealWorld.Conduit.Api.Users.Account    (Account)
 import           RealWorld.Conduit.Api.Users.Registrant (Registrant (Registrant))
 import           RealWorld.Conduit.Client
 

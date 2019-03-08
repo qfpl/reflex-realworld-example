@@ -8,13 +8,16 @@ module Frontend.Nav where
 
 import           Reflex.Dom.Core
 
-import           Data.Bool              (bool)
-import           Data.Functor           (void)
-import           Obelisk.Route          (pattern (:/), R)
-import           Obelisk.Route.Frontend (RouteToUrl, Routed, SetRoute, askRoute)
+import           Data.Bool                           (bool)
+import           Data.Functor                        (void)
+import           Obelisk.Route                       (pattern (:/), R)
+import           Obelisk.Route.Frontend              (RouteToUrl, Routed,
+                                                      SetRoute, askRoute)
 
-import           Common.Route           (FrontendRoute (..))
-import           Frontend.Utils         (routeLinkDynClass)
+import           Common.Route                        (FrontendRoute (..), Username(..))
+import           Frontend.Utils                      (routeLinkDynClass)
+import           RealWorld.Conduit.Api.Users.Account (Account)
+import qualified RealWorld.Conduit.Api.Users.Account as Account
 
 nav
   :: ( DomBuilder t m
@@ -24,7 +27,7 @@ nav
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      )
-  => Dynamic t Bool
+  => Dynamic t (Maybe Account)
   -> m ()
 nav loggedIn = do
   rDyn <- askRoute
@@ -35,7 +38,7 @@ nav loggedIn = do
         navItem (FrontendRoute_Home :/ ()) rDyn $ text "Home"
         void $ widgetHold
           loggedOutMenu
-          (bool loggedOutMenu loggedInMenu <$> updated loggedIn)
+          (maybe loggedOutMenu loggedInMenu <$> updated loggedIn)
 
   where
     loggedOutMenu = do
@@ -45,7 +48,7 @@ nav loggedIn = do
       navItem (FrontendRoute_Register :/ ()) rDyn $ do
         text "Sign up"
 
-    loggedInMenu = do
+    loggedInMenu a = do
       rDyn <- askRoute
       navItem (FrontendRoute_Editor :/ Nothing) rDyn $ do
         elClass "i" "ion-compose" blank
@@ -55,6 +58,9 @@ nav loggedIn = do
         elClass "i" "ion-gear-a" blank
         text " "
         text "Settings"
+      navItem
+        (FrontendRoute_Profile :/ (Username (Account.username a),Nothing))
+        rDyn $ text $ Account.username a
 
     navItem r rDyn = elClass "li" "nav-item" . routeLinkDynClass
       (("nav-link " <>) . bool "" " active" . (== r) <$> rDyn)

@@ -15,7 +15,6 @@ import           Control.Lens
 import           Reflex.Dom.Core
 
 import           Data.List.NonEmpty                  (NonEmpty)
-import qualified Data.List.NonEmpty                  as NEL
 import qualified Data.Map                            as Map
 import           Data.Monoid                         (appEndo)
 import           Data.Text                           (Text)
@@ -25,6 +24,8 @@ import           Obelisk.Route.Frontend              (pattern (:/), R,
                                                       RouteToUrl, RoutedT,
                                                       SetRoute, mapRoutedT',
                                                       subRoute_)
+import Reflex.Dom.Storage.Base (runStorageT)
+
 
 import           Common.Route                        (FrontendRoute (..))
 import           Frontend.Article                    (article)
@@ -43,8 +44,6 @@ import           Frontend.Settings                   (settings)
 import           Frontend.Utils                      (pathSegmentSubRoute,
                                                       routeLinkClass)
 
-import           RealWorld.Conduit.Api.Users.Account (Account)
-
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
   elAttr "link" (Map.fromList [("href",href),("rel","stylesheet"),("type","text/css")]) blank
@@ -62,7 +61,7 @@ htmlBody
   => RoutedT t (R FrontendRoute) m ()
 htmlBody = mdo
   stateDyn <- foldDyn appEndo initialFrontendState (foldMap updateFrontendState <$> stateEventsE)
-  nav (isn't (frontendStateLoggedInAccount._Nothing) <$> stateDyn)
+  nav ((view frontendStateLoggedInAccount) <$> stateDyn)
   (_, stateEventsE) <- mapRoutedT' (flip runFrontendStateT stateDyn . runEventWriterT) (subRoute_ pages)
   footer
   where

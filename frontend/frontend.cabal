@@ -9,7 +9,7 @@ library
                , common
                , containers
                , dependent-sum
-               , lens 
+               , lens
                , obelisk-frontend
                , obelisk-route
                , reflex-dom
@@ -17,6 +17,7 @@ library
                , text
                , servant
                , servant-client-core
+               , reflex-dom-storage
                , servant-reflex
   exposed-modules:
       Frontend
@@ -30,7 +31,7 @@ library
     , Frontend.Register
     , Frontend.Settings
     , Frontend.Utils
-              
+
   ghc-options: -Wall
 
 executable frontend
