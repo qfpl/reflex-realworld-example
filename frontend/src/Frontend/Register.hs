@@ -18,7 +18,8 @@ import           Servant.Common.Req                     (reqSuccess)
 
 import           Common.Route                           (FrontendRoute (..))
 import           Frontend.Utils                         (buttonClass)
-import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace))
+import           Frontend.FrontendStateT                 (FrontendEvent(LogIn))
+import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
 import           RealWorld.Conduit.Api.Users.Account    (Account)
 import           RealWorld.Conduit.Api.Users.Registrant (Registrant (Registrant))
 import           RealWorld.Conduit.Client
@@ -32,8 +33,7 @@ register
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
-     , MonadHold t m
-     , EventWriter t (NonEmpty (Maybe Account)) m
+     , EventWriter t (NonEmpty FrontendEvent) m
      )
   => m ()
 register = elClass "div" "auth-page" $ do
@@ -71,7 +71,6 @@ register = elClass "div" "auth-page" $ do
                 <*> emailI ^. textInput_value
                 <*> passI ^. textInput_value
           resE <- getClient ^. apiUsers . usersRegister . to (\f -> f (pure . pure . Namespace <$> registrant) submitE)
-          resD <- holdDyn Nothing (reqSuccess . runIdentity <$> resE)
-          display resD
+          tellEvent (fmap (pure . LogIn . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
           pure ()
   pure ()
