@@ -9,6 +9,7 @@ import           Control.Lens
 import           Reflex.Dom.Core
 
 
+import           Data.List.NonEmpty                     (NonEmpty)
 import qualified Data.Map                               as Map
 import           Obelisk.Route.Frontend                 (pattern (:/), R,
                                                          RouteToUrl, SetRoute,
@@ -18,6 +19,7 @@ import           Servant.Common.Req                     (reqSuccess)
 import           Common.Route                           (FrontendRoute (..))
 import           Frontend.Utils                         (buttonClass)
 import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace))
+import           RealWorld.Conduit.Api.Users.Account    (Account)
 import           RealWorld.Conduit.Api.Users.Registrant (Registrant (Registrant))
 import           RealWorld.Conduit.Client
 
@@ -31,6 +33,7 @@ register
      , TriggerEvent t m
      , PerformEvent t m
      , MonadHold t m
+     , EventWriter t (NonEmpty (Maybe Account)) m
      )
   => m ()
 register = elClass "div" "auth-page" $ do

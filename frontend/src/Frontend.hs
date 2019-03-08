@@ -1,33 +1,46 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE RecursiveDo                #-}
+{-# LANGUAGE TypeApplications           #-}
+
 module Frontend where
 
 import           Reflex.Dom.Core
 
-import qualified Data.Map                                as Map
-import           Data.Text                               (Text)
-import           Obelisk.Frontend                        (Frontend (Frontend),
-                                                          ObeliskWidget)
-import           Obelisk.Route.Frontend                  (pattern (:/), R,
-                                                          RouteToUrl, RoutedT,
-                                                          SetRoute, subRoute_)
+import           Control.Categorical.Bifunctor       (second)
+import           Control.Monad.Fix                   (MonadFix)
+import           Control.Monad.IO.Class              (MonadIO)
+import           Control.Monad.Trans                 (MonadTrans, lift)
+import           Control.Monad.Trans.Reader          (ReaderT, runReaderT)
+import           Data.List.NonEmpty                  (NonEmpty)
+import qualified Data.List.NonEmpty                  as NEL
+import qualified Data.Map                            as Map
+import           Data.Text                           (Text)
+import           Obelisk.Frontend                    (Frontend (Frontend),
+                                                      ObeliskWidget)
+import           Obelisk.Route.Frontend              (pattern (:/), R,
+                                                      RouteToUrl, RoutedT,
+                                                      SetRoute, askRoute,
+                                                      mapRoutedT', subRoute_)
+import           Reflex.Host.Class                   (MonadReflexCreateTrigger)
 
-import           Common.Route                            (FrontendRoute (..))
-import           Frontend.Article                        (article)
-import           Frontend.Editor                         (editor)
-import           Frontend.HomePage                       (homePage)
-import           Frontend.Login                          (login)
-import           Frontend.Nav                            (nav)
-import           Frontend.Profile                        (profile)
-import           Frontend.Register                       (register)
-import           Frontend.Settings                       (settings)
-import           Frontend.Utils                          (pathSegmentSubRoute,
-                                                          routeLinkClass)
+import           Common.Route                        (FrontendRoute (..))
+import           Frontend.Article                    (article)
+import           Frontend.Editor                     (editor)
+import           Frontend.HomePage                   (homePage)
+import           Frontend.Login                      (login)
+import           Frontend.Nav                        (nav)
+import           Frontend.Profile                    (profile)
+import           Frontend.Register                   (register)
+import           Frontend.Settings                   (settings)
+import           Frontend.Utils                      (pathSegmentSubRoute,
+                                                      routeLinkClass)
+import           RealWorld.Conduit.Api.Users.Account (Account)
 
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
@@ -40,21 +53,51 @@ htmlHead = do
   styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
   styleLink "//demo.productionready.io/main.css"
 
+newtype FrontendStateT t m a = FrontendStateT
+  { unFrontendStateT :: ReaderT (Dynamic t (Maybe Account)) m a }
+  deriving (Functor, Applicative, Monad, MonadFix, MonadTrans, NotReady t,
+            MonadHold t, MonadSample t, PostBuild t, TriggerEvent t, MonadIO,
+            MonadReflexCreateTrigger t)
+
 htmlBody
   :: ( ObeliskWidget t x (R FrontendRoute) m
      )
   => RoutedT t (R FrontendRoute) m ()
-htmlBody = do
+htmlBody = mdo
   nav (constDyn False)
-  subRoute_ $ \case
-    FrontendRoute_Home     -> homePage
-    FrontendRoute_Login    -> login
-    FrontendRoute_Register -> register
-    FrontendRoute_Article  -> article
-    FrontendRoute_Settings -> settings
-    FrontendRoute_Profile  -> pathSegmentSubRoute profile
-    FrontendRoute_Editor   -> editor
+  stateDyn <- holdDyn Nothing $ NEL.last <$> stateEventsE
+  stateEventsE <- runFrontendT stateDyn (subRoute_ pages)
   footer
+  where
+    runFrontendT
+      :: (ObeliskWidget t x (R FrontendRoute) m)
+      => Dynamic t (Maybe Account)
+      -> RoutedT t (R FrontendRoute)
+          (EventWriterT t (NonEmpty (Maybe Account))
+            (FrontendStateT t m))
+          ()
+      -> RoutedT t (R FrontendRoute) m
+          (Event t (NonEmpty (Maybe Account)))
+    runFrontendT sDyn = do
+      mapRoutedT' (fmap snd . flip runReaderT sDyn . unFrontendStateT . runEventWriterT)
+
+    pages
+      :: ( ObeliskWidget t x (R FrontendRoute) m
+         )
+      => FrontendRoute a
+      -> RoutedT t a
+          (EventWriterT t
+            (NonEmpty (Maybe Account))
+            (FrontendStateT t m))
+           ()
+    pages r = case r of
+      FrontendRoute_Home     -> homePage
+      FrontendRoute_Login    -> login
+      FrontendRoute_Register -> register
+      FrontendRoute_Article  -> article
+      FrontendRoute_Settings -> settings
+      FrontendRoute_Profile  -> pathSegmentSubRoute profile
+      FrontendRoute_Editor   -> editor
 
 footer
   :: ( DomBuilder t m

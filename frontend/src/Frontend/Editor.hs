@@ -9,7 +9,7 @@ module Frontend.Editor where
 import           Reflex.Dom.Core
 
 import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (RoutedT)
+import           Obelisk.Route.Frontend (Routed)
 
 import           Common.Route           (DocumentSlug)
 
@@ -18,8 +18,9 @@ editor
      , PostBuild t m
      , MonadHold t m
      , Prerender js m
+     , Routed t (Maybe DocumentSlug) m
      )
-  => RoutedT t (Maybe DocumentSlug) m ()
+  => m ()
 editor = elClass "div" "editor-page" $ do
   elClass "div" "container" $
     elClass "div" "row" $
