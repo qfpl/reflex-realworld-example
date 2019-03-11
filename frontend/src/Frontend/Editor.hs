@@ -6,49 +6,83 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Frontend.Editor where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
-import qualified Data.Map               as Map
-import           Obelisk.Route.Frontend (Routed)
+import           Control.Monad.IO.Class                    (MonadIO)
+import qualified Data.Map                                  as Map
+import qualified Data.Set                                  as Set
+import           Obelisk.Route.Frontend                    (R, SetRoute,
+                                                            setRoute, pattern (:/))
+import           Servant.Common.Req                        (reqSuccess)
 
-import           Common.Route           (DocumentSlug)
+import           Common.Route                              (DocumentSlug(..),
+                                                            FrontendRoute(..))
+import           Frontend.FrontendStateT
+import           Frontend.Utils                            (buttonClass)
+import qualified RealWorld.Conduit.Api.Articles.Article    as Article
+import           RealWorld.Conduit.Api.Articles.Attributes (ArticleAttributes (..),
+                                                            CreateArticle)
+import           RealWorld.Conduit.Api.Namespace           (Namespace (Namespace),
+                                                            unNamespace)
+import qualified RealWorld.Conduit.Api.User.Account       as Account
+import           RealWorld.Conduit.Client                  (apiArticles,
+                                                            articlesCreate,
+                                                            getClient)
 
 editor
-  :: ( DomBuilder t m
+  :: forall t m js s
+  . ( DomBuilder t m
      , PostBuild t m
-     , MonadHold t m
      , Prerender js m
-     , Routed t (Maybe DocumentSlug) m
+     , SetRoute t (R FrontendRoute) m
+     , HasFrontendState t s m
+     , HasLoggedInAccount s
+     , TriggerEvent t m
+     , PerformEvent t m
+     , MonadIO (Performable m)
      )
   => m ()
-editor = elClass "div" "editor-page" $ do
+editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
         prerender blank $ el "form" $
           el "fieldset" $ do
-            _ <- elClass "fieldset" "form-group" $
+            titleI <- elClass "fieldset" "form-group" $
               textInput $ def
                 & textInputConfig_attributes .~ (constDyn (Map.fromList
                   [("class","form-control")
                   ,("placeholder","Article Title")
                   ]))
-            _ <- elClass "fieldset" "form-group" $
+            descI <- elClass "fieldset" "form-group" $
               textInput $ def
                 & textInputConfig_attributes .~ (constDyn (Map.fromList
                   [("class","form-control")
                   ,("placeholder","What's this article about?")
                   ]))
-            _ <- elClass "fieldset" "form-group" $
+            bodyI <- elClass "fieldset" "form-group" $
               textArea $ def
                 & textAreaConfig_attributes .~ (constDyn (Map.fromList
                   [("class","form-control")
                   ,("placeholder","Write your article (in markdown)")
                   ,("rows","8")
                   ]))
-            (bElt,_) <- elClass' "button" "btn btn-lg btn-primary pull-xs-right" $ text "Publish Article"
-            let publishE = domEvent Click bElt
-            clicked :: Dynamic t Int <- count publishE
-            display clicked
+            publishE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Publish Article"
+            let createArticle :: Dynamic t CreateArticle = ArticleAttributes
+                  <$> titleI ^. textInput_value
+                  <*> descI  ^. textInput_value
+                  <*> bodyI  ^. textArea_value
+                  <*> constDyn Set.empty
+            resE <- getClient ^. apiArticles . articlesCreate . to (\f -> f
+              (constDyn . Identity . Just $ Account.token acct)
+              (pure . pure . Namespace <$> createArticle)
+              publishE
+              )
+            let successE = fmapMaybe (reqSuccess . runIdentity) resE
+            setRoute $
+              (\a -> FrontendRoute_Article :/ (DocumentSlug (Article.slug a)))
+              . unNamespace
+              <$> successE
             pure ()
   pure ()

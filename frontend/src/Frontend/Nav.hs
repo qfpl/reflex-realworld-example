@@ -16,8 +16,8 @@ import           Obelisk.Route.Frontend              (RouteToUrl, Routed,
 
 import           Common.Route                        (FrontendRoute (..), Username(..))
 import           Frontend.Utils                      (routeLinkDynClass)
-import           RealWorld.Conduit.Api.Users.Account (Account)
-import qualified RealWorld.Conduit.Api.Users.Account as Account
+import           RealWorld.Conduit.Api.User.Account (Account)
+import qualified RealWorld.Conduit.Api.User.Account as Account
 
 nav
   :: ( DomBuilder t m

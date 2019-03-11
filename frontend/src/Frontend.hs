@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
@@ -6,15 +7,18 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE RecursiveDo                #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 
 module Frontend where
 
 import           Control.Lens
-import           Reflex.Dom.Core
+import           Reflex.Dom.Core hiding (Namespace)
 
-import           Data.List.NonEmpty                  (NonEmpty)
+import           Control.Monad.Trans.Reader          (mapReaderT)
+import           Data.List.NonEmpty                  (NonEmpty((:|)))
 import qualified Data.Map                            as Map
 import           Data.Monoid                         (appEndo)
 import           Data.Text                           (Text)
@@ -24,18 +28,20 @@ import           Obelisk.Route.Frontend              (pattern (:/), R,
                                                       RouteToUrl, RoutedT,
                                                       SetRoute, mapRoutedT',
                                                       subRoute_)
-import Reflex.Dom.Storage.Base (runStorageT)
+import           Reflex.Dom.Storage.Base             (StorageT (..),
+                                                      StorageType (LocalStorage),
+                                                      runStorageT)
+import           Reflex.Dom.Storage.Class            (askStorageTag, pdmInsert,
+                                                      pdmRemove, tellStorage)
+import           Servant.Common.Req                  (ReqResult, reqSuccess)
 
 
 import           Common.Route                        (FrontendRoute (..))
 import           Frontend.Article                    (article)
 import           Frontend.Editor                     (editor)
-import           Frontend.FrontendStateT             (FrontendEvent,
-                                                      FrontendStateT,
-                                                      frontendStateLoggedInAccount,
-                                                      initialFrontendState, updateFrontendState,
-                                                      runFrontendStateT)
+import           Frontend.FrontendStateT
 import           Frontend.HomePage                   (homePage)
+import           Frontend.LocalStorageKey            (LocalStorageTag (..))
 import           Frontend.Login                      (login)
 import           Frontend.Nav                        (nav)
 import           Frontend.Profile                    (profile)
@@ -43,6 +49,14 @@ import           Frontend.Register                   (register)
 import           Frontend.Settings                   (settings)
 import           Frontend.Utils                      (pathSegmentSubRoute,
                                                       routeLinkClass)
+import           RealWorld.Conduit.Api.Namespace     (Namespace, unNamespace)
+import           RealWorld.Conduit.Api.User.Account (Account)
+import qualified RealWorld.Conduit.Api.User.Account as Account
+import           RealWorld.Conduit.Client            (apiUser, getClient,
+                                                      userCurrent)
+
+mapStorageT :: (forall x. m x -> n x) -> StorageT t k m a -> StorageT t k n a
+mapStorageT f = StorageT . mapReaderT (mapEventWriterT f) . unStorageT
 
 styleLink :: DomBuilder t m => Text -> m ()
 styleLink href =
@@ -55,25 +69,63 @@ htmlHead = do
   styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
   styleLink "//demo.productionready.io/main.css"
 
+type RoutedAppState t m = RoutedT t (R FrontendRoute) (AppState t m)
+
+type AppState t m
+  = EventWriterT t
+    (NonEmpty FrontendEvent)
+    (StorageT t LocalStorageTag (FrontendStateT t FrontendData m))
+
+
 htmlBody
-  :: ( ObeliskWidget t x (R FrontendRoute) m
-     )
+  :: forall t js m
+  . ( ObeliskWidget t js (R FrontendRoute) m
+    )
   => RoutedT t (R FrontendRoute) m ()
-htmlBody = mdo
-  stateDyn <- foldDyn appEndo initialFrontendState (foldMap updateFrontendState <$> stateEventsE)
-  nav ((view frontendStateLoggedInAccount) <$> stateDyn)
-  (_, stateEventsE) <- mapRoutedT' (flip runFrontendStateT stateDyn . runEventWriterT) (subRoute_ pages)
-  footer
+htmlBody = prerender (text "Loading...") $ mdo
+  mapRoutedT' unravelAppState $ do
+    jwtDyn <- askStorageTag LocalStorageJWT
+    pbE <- getPostBuild
+    currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
+    currentUserResUpdate currentUserE
+    stateDyn <- askFrontendState
+    nav ((view loggedInAccount) <$> stateDyn)
+    subRoute_ pages
+    footer
+  pure ()
   where
+    currentUserResUpdate
+      :: Event t (Identity (ReqResult () (Namespace "user" Account)))
+      -> RoutedAppState t m ()
+    currentUserResUpdate =
+      tellEvent
+      . fmap ((:| []) . LogIn . unNamespace)
+      . fmapMaybe (reqSuccess . runIdentity)
+
+    unravelAppState :: AppState t m () -> m ()
+    unravelAppState m = prerender (text "Loading...") $ mdo
+      lsDyn <- foldDyn appEndo initialFrontendData (foldMap updateFrontendData <$> sE)
+      sE <- flip runFrontendStateT lsDyn $ do
+        runStorageT LocalStorage $ do
+          (_, sInnerE) <- runEventWriterT m
+          tellStorage (foldMap localEventToDMapPatch <$> sInnerE)
+          pure sInnerE
+      pure ()
+
+    localEventToDMapPatch :: FrontendEvent -> PatchDMap LocalStorageTag Identity
+    localEventToDMapPatch = \case
+      LogOut  -> pdmRemove LocalStorageJWT
+      LogIn a -> pdmInsert LocalStorageJWT (Account.token a)
+
     pages
       :: ( ObeliskWidget t x (R FrontendRoute) m
          )
       => FrontendRoute a
       -> RoutedT t a
-          (EventWriterT t
-            (NonEmpty FrontendEvent)
-            (FrontendStateT t m))
-           ()
+         (EventWriterT t
+           (NonEmpty FrontendEvent)
+           (StorageT t LocalStorageTag (FrontendStateT t FrontendData m)))
+          ()
     pages r = case r of
       FrontendRoute_Home     -> homePage
       FrontendRoute_Login    -> login

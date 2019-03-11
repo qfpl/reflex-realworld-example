@@ -8,13 +8,37 @@ module Frontend.ArticlePreview where
 
 import           Reflex.Dom.Core
 
-import           Data.Text              (Text)
-import           Obelisk.Route          (pattern (:/), R)
-import           Obelisk.Route.Frontend (RouteToUrl, SetRoute, routeLink)
+import           Control.Monad.Fix                       (MonadFix)
+import           Data.Functor                            (void)
+import qualified Data.Map                                as Map
+import           Data.Text                               (Text)
+import           Obelisk.Route                           (pattern (:/), R)
+import           Obelisk.Route.Frontend                  (RouteToUrl, SetRoute)
 
-import           Common.Route           (DocumentSlug, FrontendRoute (..),
-                                         Username)
-import           Frontend.Utils         (routeLinkClass)
+import           Common.Route                            (DocumentSlug (..),
+                                                          FrontendRoute (..),
+                                                          Username (..))
+import           Frontend.Utils                          (imgUrl, routeLinkDyn,
+                                                          routeLinkDynClass)
+
+import           RealWorld.Conduit.Api.Articles.Article  (Article)
+import qualified RealWorld.Conduit.Api.Articles.Article  as Article
+import           RealWorld.Conduit.Api.Articles.Articles (Articles)
+import qualified RealWorld.Conduit.Api.Articles.Articles as Articles
+import qualified RealWorld.Conduit.Api.User.Profile      as Profile
+
+articlesPreview
+  :: ( DomBuilder t m
+     , PostBuild t m
+     , RouteToUrl (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) m
+     , MonadHold t m
+     , MonadFix m
+     )
+  => Dynamic t Articles -> m ()
+articlesPreview artsDyn = do
+  let artMapDyn = Map.fromList . fmap (\a -> (Article.id a, a)) . Articles.articles <$> artsDyn
+  void $ list artMapDyn $ articlePreview
 
 articlePreview
   :: ( DomBuilder t m
@@ -23,18 +47,44 @@ articlePreview
      , SetRoute t (R FrontendRoute) m
      , MonadSample t m
      )
-  => DocumentSlug -> Text -> Username -> Text -> Text -> Text -> Text -> m ()
-articlePreview s h u a dt t desc = elClass "div" "article-preview" $ do
+  => Dynamic t Article -> m ()
+articlePreview articleDyn = elClass "div" "article-preview" $ do
   elClass "div" "article-meta" $ do
-    routeLink (FrontendRoute_Profile :/ (u,Nothing)) $ elAttr "img" ("src" =: h) blank
+    let profileDyn = Article.author <$> articleDyn
+    let userRouteDyn = (\p ->
+          (FrontendRoute_Profile :/ (Username . Profile.username $ p,Nothing))
+         ) <$> profileDyn
+    routeLinkDyn userRouteDyn $ profileImage "" (Profile.image <$> profileDyn)
     elClass "div" "info" $ do
-      routeLinkClass "author" (FrontendRoute_Profile :/ (u,Nothing)) $ text a
-      elClass "span" "date" $ text dt
+      routeLinkDynClass (constDyn "author") userRouteDyn $ dynText (Profile.username <$> profileDyn)
+      elClass "span" "date" $ display (Article.createdAt <$> articleDyn)
     elClass "button" "btn btn-outline-primary btn-sm pull-xs-right" $ do
       elClass "i" "ion-heart" blank
       text " "
-      text "29"
-    routeLinkClass "preview-link" (FrontendRoute_Article :/ s) $ do
-      el "h1" $ text t
-      el "p" $ text desc
-      el "span" $ text "Read more..."
+      display $ Article.favoritesCount <$> articleDyn
+    routeLinkDynClass (constDyn "preview-link")
+      ((\a -> FrontendRoute_Article :/ (DocumentSlug $ Article.slug a)) <$> articleDyn)
+      $ do
+        el "h1" $ dynText $ Article.title <$> articleDyn
+        el "p" $ dynText $ Article.description <$> articleDyn
+        el "span" $ text "Read more..."
+
+profileRoute
+  :: Profile.Profile
+  -> (R FrontendRoute)
+profileRoute p = FrontendRoute_Profile :/ (Username (Profile.username p), Nothing)
+
+profileImage
+  :: ( DomBuilder t m
+     , RouteToUrl r m
+     , SetRoute t r m
+     , PostBuild t m
+     , MonadSample t m
+     )
+  => Text -- Class
+  -> Dynamic t (Maybe Text)
+  -> m ()
+profileImage className imageDyn =
+  elDynAttr "img"
+    ((\i -> Map.fromList [("src",imgUrl i),("class",className)]) <$> imageDyn)
+    blank

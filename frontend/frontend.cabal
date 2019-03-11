@@ -10,10 +10,12 @@ library
                , containers
                , dependent-sum
                , lens
+               , errors
                , obelisk-frontend
                , obelisk-route
                , reflex-dom
                , obelisk-generated-static
+               , pandoc
                , text
                , servant
                , servant-client-core

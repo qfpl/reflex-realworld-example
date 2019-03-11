@@ -4,16 +4,27 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Frontend.Utils where
 
-import           Control.Lens               hiding (element)
+import           Control.Lens           hiding (element)
 import           Reflex.Dom.Core
 
-import           Control.Monad.Trans        (lift)
-import qualified Data.Map                   as Map
-import           Data.Proxy                 (Proxy (Proxy))
-import           Data.Text                  (Text)
-import           Obelisk.Route.Frontend     (RouteToUrl, RoutedT, SetRoute,
-                                             askRoute, askRouteToUrl,
-                                             runRoutedT, setRoute)
+import           Control.Monad          (mfilter)
+import           Control.Monad.Trans    (lift)
+import qualified Data.Map               as Map
+import           Data.Maybe             (fromMaybe)
+import           Data.Proxy             (Proxy (Proxy))
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Obelisk.Route.Frontend (RouteToUrl, RoutedT, SetRoute,
+                                         askRoute, askRouteToUrl, runRoutedT,
+                                         setRoute)
+
+showText :: Show s => s -> Text
+showText = T.pack . show
+
+imgUrl :: Maybe Text -> Text
+imgUrl =
+  fromMaybe "https://static.productionready.io/images/smiley-cyrus.jpg"
+  . mfilter (not . T.null . T.strip)
 
 -- These should probably be in obelisk!
 
@@ -57,6 +68,19 @@ routeLinkAttr
   -> m a
   -> m a
 routeLinkAttr attrs = routeLinkDynAttr (constDyn attrs) . constDyn
+
+routeLinkDyn
+  :: forall t m a r
+  .  ( DomBuilder t m
+     , RouteToUrl r m
+     , SetRoute t r m
+     , PostBuild t m
+     , MonadSample t m
+     )
+  => Dynamic t r
+  -> m a
+  -> m a
+routeLinkDyn = routeLinkDynAttr (constDyn Map.empty)
 
 routeLinkDynClass
   :: forall t m a r

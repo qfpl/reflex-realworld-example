@@ -3,12 +3,12 @@
 {-# LANGUAGE TypeOperators #-}
 module RealWorld.Conduit.Api.Users where
 
-import           Servant.API                             ((:<|>), (:>), JSON,
-                                                          Post, PostCreated,
-                                                          ReqBody)
+import           Servant.API                             ((:<|>), (:>),
+                                                          JSON, Post,
+                                                          PostCreated, ReqBody)
 
 import           RealWorld.Conduit.Api.Namespace         (Namespace)
-import           RealWorld.Conduit.Api.Users.Account     (Account)
+import           RealWorld.Conduit.Api.User.Account     (Account)
 import           RealWorld.Conduit.Api.Users.Credentials (Credentials)
 import           RealWorld.Conduit.Api.Users.Registrant  (Registrant)
 

@@ -3,27 +3,56 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Frontend.HomePage where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
-import           Obelisk.Route           (pattern (:/), R)
-import           Obelisk.Route.Frontend  (RouteToUrl, SetRoute)
+import           Data.Functor                            (void)
+import           Obelisk.Route                           (pattern (:/), R)
+import           Obelisk.Route.Frontend                  (RouteToUrl, SetRoute)
+import           Servant.Common.Req                      (QParam (QNone),
+                                                          reqSuccess)
 
-import           Common.Route            (DocumentSlug (..), FrontendRoute (..),
-                                          Username (..))
-import           Frontend.ArticlePreview (articlePreview)
-import           Frontend.Utils          (routeLinkClass)
+import           Common.Route                            (FrontendRoute (..))
+import           Frontend.ArticlePreview                 (articlesPreview)
+import           Frontend.FrontendStateT
+import           Frontend.Utils                          (routeLinkClass)
+import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
+import           RealWorld.Conduit.Api.User.Account     (token)
+import           RealWorld.Conduit.Client                (apiArticles,
+                                                          articlesList,
+                                                          getClient)
 
 homePage
-  :: ( PostBuild t m
+  :: forall t m s js
+  . ( PostBuild t m
      , DomBuilder t m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
-     , MonadSample t m
+     --, MonadSample t m
+     , MonadHold t m
+     , TriggerEvent t m
+     , PerformEvent t m
+     , HasLoggedInAccount s
+     , HasFrontendState t s m
+     , Prerender js m
      )
   => m ()
-homePage = elClass "div" "home-page" $ do
+homePage = prerender (text "Loading...") $ elClass "div" "home-page" $ do
+  tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
+  pbE <- getPostBuild
+  artE <- getClient ^. apiArticles . articlesList . to (\f -> f
+    (constDyn . Identity $ QNone)
+    (constDyn . Identity $ QNone)
+    (constDyn . Identity $ [])
+    (constDyn . Identity $ [])
+    (constDyn . Identity $ [])
+    (Identity <$> tokDyn)
+    (leftmost [pbE,void $ updated tokDyn])
+    )
+  artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)
   elClass "div" "banner" $
     elClass "div" "container" $ do
       elClass "h1" "logo-font" $ text "conduit"
@@ -34,22 +63,8 @@ homePage = elClass "div" "home-page" $ do
         elClass "ul" "nav nav-pills outline-active" $ do
           elClass "li" "nav-item" $ routeLinkClass "nav-link disabled" (FrontendRoute_Home :/ ()) $ text "Your Feed"
           elClass "li" "nav-item" $ routeLinkClass "nav-link active" (FrontendRoute_Home :/ ()) $ text "Global Feed"
-      articlePreview
-        (DocumentSlug "doc1")
-        "http://i.imgur.com/Qr71crq.jpg"
-        (Username "esimons")
-        "Eric Simons"
-        "January 20th"
-        "How to build webapps that scale"
-        "This is the description for the post."
-      articlePreview
-        (DocumentSlug "doc2")
-        "http://i.imgur.com/N4VcUeJ.jpg"
-        (Username "apai")
-        "Albert Pai"
-        "January 20th"
-        "The song you won't ever stop singing. No matter how hard you try."
-        "This is the description for the post."
+      articlesPreview artsDyn
+
     elClass "div" "col-md-3" $
       elClass "div" "sidebar" $ do
         el "p" $ text "Popular Tags"

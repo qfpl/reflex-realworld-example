@@ -8,6 +8,7 @@ module Frontend.Login where
 import           Control.Lens
 import           Reflex.Dom.Core
 
+import           Control.Monad.IO.Class                  (MonadIO)
 import           Data.Functor.Identity                   (runIdentity)
 import           Data.List.NonEmpty                      (NonEmpty)
 import qualified Data.Map                                as Map
@@ -17,7 +18,7 @@ import           Obelisk.Route.Frontend                  (pattern (:/), R,
 import           Servant.Common.Req                      (reqSuccess)
 
 import           Common.Route                            (FrontendRoute (..))
-import           Frontend.FrontendStateT                 (FrontendEvent(LogIn))
+import           Frontend.FrontendStateT
 import           Frontend.Utils                          (buttonClass)
 import           RealWorld.Conduit.Api.Namespace         (Namespace (Namespace),
                                                           unNamespace)
@@ -32,10 +33,14 @@ login
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
-     , EventWriter t (NonEmpty FrontendEvent) m
+     , EventWriter t (NonEmpty e) m
+     , AsFrontendEvent e
+     , HasLoggedInAccount s
+     , HasFrontendState t s m
+     , MonadIO (Performable m)
      )
   => m ()
-login = elClass "div" "auth-page" $ do
+login = noUserWidget $ elClass "div" "auth-page" $ do
   elClass "div" "container-page" $
     elClass "div" "row" $
       elClass "div" "col-md-6 offset-md-3 col-xs-12" $ do
@@ -63,6 +68,6 @@ login = elClass "div" "auth-page" $ do
                 <$> emailI ^. textInput_value
                 <*> passI ^. textInput_value
           resE <- getClient ^. apiUsers . usersLogin . to (\f -> f (pure . pure . Namespace <$> credentials) submitE)
-          tellEvent (fmap (pure . LogIn . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
+          tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
           pure ()
   pure ()

@@ -6,39 +6,70 @@
 {-# LANGUAGE PatternSynonyms       #-}
 module Frontend.Profile where
 
+import           Control.Lens
 import           Reflex.Dom.Core
 
-import           Data.Bool               (bool)
-import qualified Data.Map                as Map
-import           Obelisk.Route.Frontend  (pattern (:/), R, RouteToUrl, RoutedT,
-                                          SetRoute, askRoute)
+import           Data.Bool                               (bool)
+import           Data.Functor                            (void)
+import qualified Data.Map                                as Map
+import           Obelisk.Route.Frontend                  (pattern (:/), R,
+                                                          RouteToUrl, RoutedT,
+                                                          SetRoute, askRoute)
+import           Servant.Common.Req                      (QParam (QNone),
+                                                          reqSuccess)
 
-import           Common.Route            (FrontendRoute (..), ProfileRoute (..),
-                                          Username(..), DocumentSlug(..))
-import           Frontend.ArticlePreview (articlePreview)
-import           Frontend.Utils          (routeLinkDynClass)
+import           Common.Route                            (FrontendRoute (..),
+                                                          ProfileRoute (..),
+                                                          Username (..))
+import           Frontend.ArticlePreview                 (articlesPreview, profileImage)
+import           Frontend.FrontendStateT
+import           Frontend.Utils                          (buttonClass,
+                                                          routeLinkDynClass)
+import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
+import           RealWorld.Conduit.Api.Namespace         (unNamespace)
+import qualified RealWorld.Conduit.Api.User.Account      as Account
+import           RealWorld.Conduit.Client                (apiArticles, apiUser,
+                                                          articlesList,
+                                                          getClient,
+                                                          userCurrent)
 
 profile
   :: ( DomBuilder t m
-     , MonadSample t m
      , PostBuild t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
+     , HasFrontendState t s m
+     , HasLoggedInAccount s
+     , Prerender js m
+     , TriggerEvent t m
+     , PerformEvent t m
+     , MonadHold t m
      )
   => Dynamic t Username
   -> RoutedT t (Maybe (R ProfileRoute)) m ()
-profile usernameDyn = elClass "div" "profile-page" $ do
+profile usernameDyn =
+  elClass "div" "profile-page" $ do
   elClass "div" "user-info" $
     elClass "div" "container" $
       elClass "div" "row" $
-        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-          elAttr "img" (Map.fromList [("src","http://i.imgur.com/Qr71crq.jpg"),("class","user-img")]) blank
-          el "h4" $ text "Eric Simons"
-          el "p" $ text "Cofounder @GoThinkster, lived in Aol's HQ for a few months, kinda looks like Peeta from the Hunger Games"
-          (_,_) <- elClass' "button" "btn btn-sm btn-outline-secondary action-btn" $ do
-            elClass "i" "ion-plus-round" blank
-            text " Follow Eric Simons"
-          pure ()
+        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender (text "Loading") $ do
+          tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
+          pbE <- getPostBuild
+          loadResE <- getClient ^. apiUser . userCurrent . to (\f -> f
+            (Identity <$> tokDyn)
+            pbE
+            )
+          let loadSuccessE = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
+          void $ widgetHold (text "Loading") $ ffor loadSuccessE $
+            maybe blank $ \acct -> do
+              profileImage "user-img" (constDyn $ Account.image acct)
+              el "h4" $ text $ Account.username acct
+              el "p" $ text $ Account.bio acct
+              _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" $ do
+                elClass "i" "ion-plus-round" blank
+                text " Follow "
+                text $ Account.username acct
+              pure ()
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
@@ -47,23 +78,21 @@ profile usernameDyn = elClass "div" "profile-page" $ do
             rDyn <- askRoute
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
-        articlePreview
-          (DocumentSlug "doc1")
-          "http://i.imgur.com/Qr71crq.jpg"
-          (Username "esimons")
-          "Eric Simons"
-          "January 20th"
-          "How to build webapps that scale"
-          "This is the description for the post."
-        articlePreview
-          (DocumentSlug "doc2")
-          "http://i.imgur.com/N4VcUeJ.jpg"
-          (Username "apai")
-          "Albert Pai"
-          "January 20th"
-          "The song you won't ever stop singing. No matter how hard you try."
-          "This is the description for the post."
-
+        prerender (text "Loading...") $ do
+          tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
+          pbE <- getPostBuild
+          artE <- getClient ^. apiArticles . articlesList . to (\f -> f
+            (constDyn . Identity $ QNone)
+            (constDyn . Identity $ QNone)
+            (constDyn . Identity $ [])
+            (Identity . pure . unUsername <$> usernameDyn)
+            (constDyn . Identity $ [])
+            --(Identity . pure . unUsername <$> usernameDyn)
+            (Identity <$> tokDyn)
+            (leftmost [pbE,void $ updated tokDyn])
+            )
+          artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)
+          articlesPreview artsDyn
   where
     navItem sr rDyn = elClass "li" "nav-item" . routeLinkDynClass
       (("nav-link " <>) . bool "" " active" . (== sr) <$> rDyn)

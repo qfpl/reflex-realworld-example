@@ -1,12 +1,16 @@
 {-# LANGUAGE CPP                        #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE UndecidableInstances       #-}
 module Frontend.FrontendStateT where
 
@@ -24,100 +28,191 @@ import           Control.Monad.Trans.Control         (MonadTransControl (StT),
                                                       defaultLiftWith,
                                                       defaultRestoreT, liftWith,
                                                       restoreT)
-import           Control.Monad.Trans.Reader          (ReaderT, runReaderT)
+import           Control.Monad.Trans.Reader          (ReaderT, ask, runReaderT)
 import           Data.Coerce                         (coerce)
 import           Data.Constraint                     (Dict (..))
-import           Data.Monoid                         (Endo (Endo))
+import           Data.Functor                        (void)
+import           Data.Monoid                         (Endo (Endo), First)
 import           Language.Javascript.JSaddle         (MonadJSM)
-import           Obelisk.Route.Frontend              (RouteToUrl, SetRoute,
-                                                      askRouteToUrl,
+import           Obelisk.Route.Frontend              (pattern (:/), R,
+                                                      RouteToUrl, RoutedT,
+                                                      SetRoute, askRouteToUrl,
                                                       modifyRoute, setRoute)
+import           Reflex.Dom.Storage.Base             (StorageT)
 import           Reflex.Host.Class                   (MonadReflexCreateTrigger)
 
-import           RealWorld.Conduit.Api.Users.Account (Account)
+import           Common.Route                        (FrontendRoute (FrontendRoute_Home))
+import           RealWorld.Conduit.Api.User.Account (Account)
 
 data FrontendEvent = LogOut | LogIn Account
+makeClassyPrisms ''FrontendEvent
 
-data FrontendState = FrontendState
-  { _frontendStateLoggedInAccount :: Maybe Account
+data FrontendData = FrontendData
+  { _frontendDataLoggedInAccount :: Maybe Account
   }
-makeLenses ''FrontendState
+makeClassy ''FrontendData
 
-initialFrontendState :: FrontendState
-initialFrontendState = FrontendState Nothing
+class HasLoggedInAccount s where
+  loggedInAccount :: Lens' s (Maybe Account)
 
-updateFrontendState :: FrontendEvent -> Endo FrontendState
-updateFrontendState e = Endo $ case e of
-  LogOut  -> frontendStateLoggedInAccount .~ Nothing
-  LogIn a -> frontendStateLoggedInAccount .~ Just a
+instance HasLoggedInAccount FrontendData where
+  loggedInAccount = frontendDataLoggedInAccount
 
-newtype FrontendStateT t m a = FrontendStateT
-  { unFrontendStateT :: ReaderT (Dynamic t FrontendState) m a }
+initialFrontendData :: FrontendData
+initialFrontendData = FrontendData Nothing
+
+updateFrontendData :: FrontendEvent -> Endo FrontendData
+updateFrontendData e = Endo $ case e of
+  LogOut  -> frontendDataLoggedInAccount .~ Nothing
+  LogIn a -> frontendDataLoggedInAccount ?~ a
+
+newtype FrontendStateT t s m a = FrontendStateT
+  { unFrontendStateT :: ReaderT (Dynamic t s) m a }
   deriving (Functor, Applicative, Monad, MonadFix, MonadTrans, NotReady t,
             MonadHold t, MonadSample t, PostBuild t, TriggerEvent t, MonadIO,
             MonadReflexCreateTrigger t, HasDocument)
 
-runFrontendStateT :: FrontendStateT t m a -> Dynamic t FrontendState -> m a
+runFrontendStateT :: FrontendStateT t s m a -> Dynamic t s -> m a
 runFrontendStateT t = runReaderT (unFrontendStateT t)
 
-instance (Monad m, RouteToUrl r m) => RouteToUrl r (FrontendStateT t m) where
+class HasFrontendState t s m | m -> s where
+  askFrontendState :: m (Dynamic t s)
+
+viewFrontendState
+  :: (HasFrontendState t s m, Functor (Dynamic t), Functor m)
+  => Getter s a
+  -> m (Dynamic t a)
+viewFrontendState g = fmap (^. g) <$> askFrontendState
+
+reviewFrontendState
+  :: (HasFrontendState t s m, Functor (Dynamic t), Functor m)
+  => Getting (First a) s a
+  -> m (Dynamic t (Maybe a))
+reviewFrontendState g = fmap (^? g) <$> askFrontendState
+
+noUserWidget
+  :: ( HasLoggedInAccount s
+     , HasFrontendState t s m
+     , SetRoute t (R FrontendRoute) m
+     , DomBuilder t m
+     , PostBuild t m
+     , MonadIO (Performable m)
+     , TriggerEvent t m
+     , PerformEvent t m
+     )
+  => m ()
+  -> m ()
+noUserWidget w = withUser w (const $ redirect (FrontendRoute_Home :/ ()))
+
+userWidget
+  :: ( HasLoggedInAccount s
+     , HasFrontendState t s m
+     , SetRoute t (R FrontendRoute) m
+     , DomBuilder t m
+     , PostBuild t m
+     , MonadIO (Performable m)
+     , PerformEvent t m
+     , TriggerEvent t m
+     )
+  => (Account -> m ())
+  -> m ()
+userWidget = withUser (redirect (FrontendRoute_Home :/ ()))
+
+withUser
+  :: ( HasLoggedInAccount s
+     , HasFrontendState t s m
+     , Monad m
+     , DomBuilder t m
+     , PostBuild t m
+     )
+  => m ()
+  -> (Account -> m ())
+  -> m ()
+withUser noUserW userW = do
+  accountDyn <- viewFrontendState loggedInAccount
+  void . dyn $ maybe noUserW userW <$> accountDyn
+
+redirect
+  :: ( SetRoute t r m
+     , PostBuild t m
+     , PerformEvent t m
+     , TriggerEvent t m
+     , MonadIO (Performable m)
+     ) => r -> m ()
+redirect r = do
+  pbE <- getPostBuild >>= delay 0.05
+  setRoute $ r <$ pbE
+
+instance Monad m => HasFrontendState t s (FrontendStateT t s m) where
+  askFrontendState = FrontendStateT ask
+
+instance (Monad m, HasFrontendState t s m) => HasFrontendState t s (RoutedT t r m) where
+  askFrontendState = lift askFrontendState
+
+instance (Monad m, HasFrontendState t s m) => HasFrontendState t s (EventWriterT t w m) where
+  askFrontendState = lift askFrontendState
+
+instance (Monad m, HasFrontendState t s m) => HasFrontendState t s (StorageT t k m) where
+  askFrontendState = lift askFrontendState
+
+instance (Monad m, RouteToUrl r m) => RouteToUrl r (FrontendStateT t s m) where
   askRouteToUrl = lift askRouteToUrl
 
-instance (Monad m, SetRoute t r m) => SetRoute t r (FrontendStateT t m) where
+instance (Monad m, SetRoute t r m) => SetRoute t r (FrontendStateT t s m) where
   setRoute = lift . setRoute
   modifyRoute = lift . modifyRoute
 
-instance HasJSContext m => HasJSContext (FrontendStateT t m) where
-  type JSContextPhantom (FrontendStateT t m) = JSContextPhantom m
+instance HasJSContext m => HasJSContext (FrontendStateT t s m) where
+  type JSContextPhantom (FrontendStateT t s m) = JSContextPhantom m
   askJSContext = lift askJSContext
 
-instance Prerender js m => Prerender js (FrontendStateT t m) where
+instance Prerender js m => Prerender js (FrontendStateT t s m) where
   prerenderClientDict = fmap (\Dict -> Dict) (prerenderClientDict :: Maybe (Dict (PrerenderClientConstraint js m)))
 
-instance Requester t m => Requester t (FrontendStateT t m) where
-  type Request (FrontendStateT t m) = Request m
-  type Response (FrontendStateT t m) = Response m
+instance Requester t m => Requester t (FrontendStateT t s m) where
+  type Request (FrontendStateT t s m) = Request m
+  type Response (FrontendStateT t s m) = Response m
   requesting = FrontendStateT . requesting
   requesting_ = FrontendStateT . requesting_
 
 #ifndef ghcjs_HOST_OS
-deriving instance MonadJSM m => MonadJSM (FrontendStateT t m)
+deriving instance MonadJSM m => MonadJSM (FrontendStateT t s m)
 #endif
 
-instance PerformEvent t m => PerformEvent t (FrontendStateT t m) where
-  type Performable (FrontendStateT t m) = Performable m
+instance PerformEvent t m => PerformEvent t (FrontendStateT t s m) where
+  type Performable (FrontendStateT t s m) = Performable m
   performEvent = lift . performEvent
   performEvent_ = lift . performEvent_
 
-instance MonadRef m => MonadRef (FrontendStateT t m) where
-  type Ref (FrontendStateT t m) = Ref m
+instance MonadRef m => MonadRef (FrontendStateT t s m) where
+  type Ref (FrontendStateT t s m) = Ref m
   newRef = lift . newRef
   readRef = lift . readRef
   writeRef r = lift . writeRef r
 
-instance HasJS x m => HasJS x (FrontendStateT t m) where
-  type JSX (FrontendStateT t m) = JSX m
+instance HasJS x m => HasJS x (FrontendStateT t s m) where
+  type JSX (FrontendStateT t s m) = JSX m
   liftJS = lift . liftJS
 
-instance MonadTransControl (FrontendStateT t) where
-  type StT (FrontendStateT t) a = StT (ReaderT (Dynamic t FrontendState)) a
+instance MonadTransControl (FrontendStateT t s) where
+  type StT (FrontendStateT t s) a = StT (ReaderT (Dynamic t s)) a
   liftWith = defaultLiftWith FrontendStateT unFrontendStateT
   restoreT = defaultRestoreT FrontendStateT
 
-instance PrimMonad m => PrimMonad (FrontendStateT t m ) where
-  type PrimState (FrontendStateT t m) = PrimState m
+instance PrimMonad m => PrimMonad (FrontendStateT t s m ) where
+  type PrimState (FrontendStateT t s m) = PrimState m
   primitive = lift . primitive
 
-instance DomBuilder t m => DomBuilder t (FrontendStateT t m) where
-  type DomBuilderSpace (FrontendStateT t m) = DomBuilderSpace m
+instance DomBuilder t m => DomBuilder t (FrontendStateT t s m) where
+  type DomBuilderSpace (FrontendStateT t s m) = DomBuilderSpace m
 
-instance Adjustable t m => Adjustable t (FrontendStateT t m) where
+instance Adjustable t m => Adjustable t (FrontendStateT t s m) where
   runWithReplace a0 a' = FrontendStateT $ runWithReplace (coerce a0) $ coerceEvent a'
   traverseIntMapWithKeyWithAdjust f a0 a' = FrontendStateT $ traverseIntMapWithKeyWithAdjust (coerce f) (coerce a0) $ coerce a'
   traverseDMapWithKeyWithAdjust f a0 a' = FrontendStateT $ traverseDMapWithKeyWithAdjust (\k v -> coerce $ f k v) (coerce a0) $ coerce a'
   traverseDMapWithKeyWithAdjustWithMove f a0 a' = FrontendStateT $ traverseDMapWithKeyWithAdjustWithMove (\k v -> coerce $ f k v) (coerce a0) $ coerce a'
 
-instance (Monad m, MonadQuery t vs m) => MonadQuery t vs (FrontendStateT t m) where
+instance (Monad m, MonadQuery t vs m) => MonadQuery t vs (FrontendStateT t s m) where
   tellQueryIncremental = lift . tellQueryIncremental
   askQueryResult = lift askQueryResult
   queryIncremental = lift . queryIncremental

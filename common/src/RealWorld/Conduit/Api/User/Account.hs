@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE StandaloneDeriving #-}
-module RealWorld.Conduit.Api.Users.Account where
+module RealWorld.Conduit.Api.User.Account where
 
 import           Data.Aeson   (FromJSON, ToJSON)
 import           Data.Text    (Text)

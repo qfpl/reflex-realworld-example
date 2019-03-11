@@ -9,6 +9,7 @@ import           Control.Lens
 import           Reflex.Dom.Core
 
 
+import           Control.Monad.IO.Class                 (MonadIO)
 import           Data.List.NonEmpty                     (NonEmpty)
 import qualified Data.Map                               as Map
 import           Obelisk.Route.Frontend                 (pattern (:/), R,
@@ -17,9 +18,10 @@ import           Obelisk.Route.Frontend                 (pattern (:/), R,
 import           Servant.Common.Req                     (reqSuccess)
 
 import           Common.Route                           (FrontendRoute (..))
+import           Frontend.FrontendStateT
 import           Frontend.Utils                         (buttonClass)
-import           Frontend.FrontendStateT                 (FrontendEvent(LogIn))
-import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
+import           RealWorld.Conduit.Api.Namespace        (Namespace (Namespace),
+                                                         unNamespace)
 import           RealWorld.Conduit.Api.Users.Registrant (Registrant (Registrant))
 import           RealWorld.Conduit.Client
 
@@ -32,10 +34,14 @@ register
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
-     , EventWriter t (NonEmpty FrontendEvent) m
+     , MonadIO (Performable m)
+     , EventWriter t (NonEmpty e) m
+     , AsFrontendEvent e
+     , HasFrontendState t s m
+     , HasLoggedInAccount s
      )
   => m ()
-register = elClass "div" "auth-page" $ do
+register = noUserWidget $ elClass "div" "auth-page" $ do
   elClass "div" "container-page" $
     elClass "div" "row" $
       elClass "div" "col-md-6 offset-md-3 col-xs-12" $ do
@@ -70,6 +76,6 @@ register = elClass "div" "auth-page" $ do
                 <*> emailI ^. textInput_value
                 <*> passI ^. textInput_value
           resE <- getClient ^. apiUsers . usersRegister . to (\f -> f (pure . pure . Namespace <$> registrant) submitE)
-          tellEvent (fmap (pure . LogIn . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
+          tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
           pure ()
   pure ()
