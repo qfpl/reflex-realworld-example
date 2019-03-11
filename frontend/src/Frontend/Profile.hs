@@ -11,7 +11,6 @@ import           Reflex.Dom.Core
 
 import           Data.Bool                               (bool)
 import           Data.Functor                            (void)
-import qualified Data.Map                                as Map
 import           Obelisk.Route.Frontend                  (pattern (:/), R,
                                                           RouteToUrl, RoutedT,
                                                           SetRoute, askRoute)

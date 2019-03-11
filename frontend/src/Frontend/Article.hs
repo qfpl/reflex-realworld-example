@@ -24,11 +24,9 @@ import           Data.Maybe                                   (fromMaybe)
 import           Data.Monoid                                  (Endo (Endo),
                                                                appEndo)
 import           Data.Text                                    (Text)
-import qualified Data.Text                                    as Text
 import           JSDOM.Document                               (createElement)
 import           JSDOM.Element                                (setInnerHTML)
-import           JSDOM.Types                                  (Document,
-                                                               Element, liftJSM)
+import           JSDOM.Types                                  (liftJSM)
 import           Obelisk.Route.Frontend                       (pattern (:/), R,
                                                                RouteToUrl,
                                                                Routed, SetRoute,
@@ -108,9 +106,7 @@ articleMeta
   :: ( DomBuilder t m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
-     , MonadSample t m
      , PostBuild t m
-     , MonadFix m
      , MonadHold t m
      )
   => Article.Article
@@ -144,18 +140,11 @@ articleMeta art = elClass "div" "article-meta" $ do
       pure ()
 
 articleContent
-  :: forall t m s js
+  :: forall t m js
   .  ( DomBuilder t m
-     , Routed t DocumentSlug m
-     , SetRoute t (R FrontendRoute) m
-     , RouteToUrl (R FrontendRoute) m
-     , PostBuild t m
      , MonadHold t m
-     , MonadFix m
      , PerformEvent t m
      , HasDocument m
-     , HasFrontendState t s m
-     , HasLoggedInAccount s
      , Prerender js m
      )
   => Dynamic t (Maybe Article.Article)
@@ -177,19 +166,17 @@ articleContent articleDyn = prerender (text "Loading...") $ do
       e <- createElement d ("div" :: String)
       setInnerHTML e htmlT
       pure e
-    performEvent $ (liftJSM . setInnerHTML e) <$> updated htmlDyn
+    performEvent_ $ (liftJSM . setInnerHTML e) <$> updated htmlDyn
     placeRawElement e
 
 comments
   :: forall t m s js
   .  ( DomBuilder t m
-     , Routed t DocumentSlug m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      , PostBuild t m
      , MonadHold t m
      , MonadFix m
-     , HasDocument m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      , Prerender js m

@@ -76,10 +76,7 @@ profileRoute p = FrontendRoute_Profile :/ (Username (Profile.username p), Nothin
 
 profileImage
   :: ( DomBuilder t m
-     , RouteToUrl r m
-     , SetRoute t r m
      , PostBuild t m
-     , MonadSample t m
      )
   => Text -- Class
   -> Dynamic t (Maybe Text)

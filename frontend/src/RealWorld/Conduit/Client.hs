@@ -24,7 +24,7 @@ import           Servant.Auth                                 (Auth, JWT)
 import           Servant.Common.Req                           (QParam, Req,
                                                                headers)
 import           Servant.Reflex                               (BaseUrl (BaseFullUrl),
-                                                               Scheme (Http),
+                                                               Scheme (..),
                                                                SupportsServantReflex)
 import           Servant.Reflex.Multi                         (ClientMulti, HasClientMulti (..),
                                                                ReqResult,
@@ -108,6 +108,12 @@ data ApiClient f t m = ApiClient
   }
 makeLenses ''ApiClient
 
+-- Don't try this yet. We aren't exactly to spec properly yet
+baseUrl :: BaseUrl
+tokenName :: Text
+--(baseUrl, tokenName) = (BaseFullUrl Https "conduit.productionready.io" 443 "/", "Token")
+(baseUrl, tokenName) = (BaseFullUrl Http "localhost" 443 "/", "Bearer")
+
 getClient
   :: forall f t m
   .  (Traversable f, Applicative f, SupportsServantReflex t m)
@@ -115,7 +121,7 @@ getClient
 getClient = ApiClient { .. } :: ApiClient f t m
   where
     bp :: Dynamic t BaseUrl
-    bp = constDyn $ BaseFullUrl Http "localhost" 8080 "/"
+    bp = constDyn $ baseUrl
     c :: ClientMulti t m Api f ()
     c = clientA api (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
     apiUsersC :<|> apiUserC :<|> apiArticlesC = c
@@ -144,6 +150,6 @@ instance (HasClientMulti t m api f tag, Reflex t, Applicative f)
       req' :: (Maybe Text) -> Req t -> Req t
       req' Nothing  r = r
       req' (Just a) r = r
-        { headers = ( "Authorization" , constDyn . pure $ "Bearer " <> a) : (headers r)
+        { headers = ( "Authorization" , constDyn . pure $ tokenName <> " " <> a) : (headers r)
         }
       reqs' = liftA2 req' <$> authdatas <*> reqs
