@@ -78,17 +78,25 @@ article
      )
   => m ()
 article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
+  -- We ask our route for the document slug and make the backend call on load
   slugDyn <- askRoute
   pbE <- getPostBuild
   loadResE <- getClient ^. apiArticles . articlesArticle
      . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleGet
      . to ($ pbE)
+
+  -- While we are loading, we dont have an article
+  -- The types are honest about this. 
   let loadSuccessE :: Event t (Maybe Article.Article) = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
+  
   articleDyn <- holdDyn Nothing loadSuccessE
 
   elClass "div" "banner" $
     elClass "div" "container" $ do
       el "h1" $ text "How to build webapps that scale"
+      -- We are a little clumsy with dealing with not having 
+      -- an article. We just disply a blank element while we
+      -- dont have one. Should be better. :)
       void $ dyn $ maybe blank articleMeta <$> articleDyn
   elClass "div" "container page" $ do
     articleContent articleDyn
@@ -97,6 +105,7 @@ article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
       void $ dyn $ maybe blank articleMeta <$> articleDyn
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-8 offset-md-2" $ do
+        -- Do the comments UI below
         comments slugDyn
 
 markDownToHtml5 :: Text -> Maybe Text
@@ -150,9 +159,11 @@ articleContent
   => Dynamic t (Maybe Article.Article)
   -> m ()
 articleContent articleDyn = prerender (text "Loading...") $ do
+  -- Just call pandoc over the article body like it is no big deal
   let htmlDyn = fromMaybe "" . (markDownToHtml5 <=< (fmap Article.body)) <$> articleDyn
   elClass "div" "row article-content" $ do
     d <- askDocument
+    -- We have to sample the initial value to set it on creation
     htmlT <- sample . current $ htmlDyn
     e <- liftJSM $ do
       -- This wont execute scripts, but will allow users to XSS attack through
@@ -166,7 +177,9 @@ articleContent articleDyn = prerender (text "Loading...") $ do
       e <- createElement d ("div" :: String)
       setInnerHTML e htmlT
       pure e
+    -- And make sure we update the html when the article changes
     performEvent_ $ (liftJSM . setInnerHTML e) <$> updated htmlDyn
+    -- Put out raw element into our DomBuilder
     placeRawElement e
 
 comments
@@ -187,17 +200,23 @@ comments
   => Dynamic t DocumentSlug
   -> m ()
 comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
+  -- Load the comments when this widget is built
   pbE <- getPostBuild
   loadResE <- getClient ^. apiArticles . articlesArticle
      . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleComments
      . to ($ pbE)
   let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) loadResE
+  -- Turn it into a map so that we have IDs for each comment
   let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
+  
+  -- Our state actually includes the AJAX load and future comment adds
   commentsMapDyn <- foldDyn appEndo Map.empty $ fold
     [ Endo . const <$> loadedMapE
     , (\newComment -> Endo $ Map.insert (Comment.id newComment) newComment) <$> newCommentE
     ]
 
+  -- Make a form that will add a comment with the backend and return
+  -- an event when they are successfully added.
   newCommentE <- elClass "form" "card comment-form" $ mdo
     commentI <- elClass "div" "card-block" $ do
       textArea $ def
@@ -217,7 +236,11 @@ comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
     let newE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) submitResE
     pure newE
 
+  -- This takes the Map Int Comment and displays them all  
   void $ list commentsMapDyn $ \commentDupeDyn -> do
+    -- But we have to filter out duplicate updates to prevent 
+    -- setting the text in unnecessarily.
+    -- DISCUSS! :)
     commentDyn <- holdUniqDyn commentDupeDyn
     let profileDyn = Comment.author <$> commentDyn
     elClass "div" "card" $ do

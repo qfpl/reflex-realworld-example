@@ -112,7 +112,7 @@ makeLenses ''ApiClient
 baseUrl :: BaseUrl
 tokenName :: Text
 --(baseUrl, tokenName) = (BaseFullUrl Https "conduit.productionready.io" 443 "/", "Token")
-(baseUrl, tokenName) = (BaseFullUrl Http "localhost" 443 "/", "Bearer")
+(baseUrl, tokenName) = (BaseFullUrl Http "localhost" 8080 "/", "Bearer")
 
 getClient
   :: forall f t m
