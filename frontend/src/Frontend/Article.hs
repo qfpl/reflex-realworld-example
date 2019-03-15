@@ -56,6 +56,7 @@ import qualified RealWorld.Conduit.Api.User.Account           as Account
 import qualified RealWorld.Conduit.Api.User.Profile           as Profile
 import           RealWorld.Conduit.Client                     (apiArticles, articleCommentCreate,
                                                                articleComments,
+                                                               articleCommentDelete,
                                                                articleGet,
                                                                articlesArticle,
                                                                getClient)
@@ -86,15 +87,15 @@ article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
      . to ($ pbE)
 
   -- While we are loading, we dont have an article
-  -- The types are honest about this. 
+  -- The types are honest about this.
   let loadSuccessE :: Event t (Maybe Article.Article) = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
-  
+
   articleDyn <- holdDyn Nothing loadSuccessE
 
   elClass "div" "banner" $
     elClass "div" "container" $ do
       el "h1" $ text "How to build webapps that scale"
-      -- We are a little clumsy with dealing with not having 
+      -- We are a little clumsy with dealing with not having
       -- an article. We just disply a blank element while we
       -- dont have one. Should be better. :)
       void $ dyn $ maybe blank articleMeta <$> articleDyn
@@ -208,11 +209,12 @@ comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
   let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) loadResE
   -- Turn it into a map so that we have IDs for each comment
   let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
-  
+
   -- Our state actually includes the AJAX load and future comment adds
   commentsMapDyn <- foldDyn appEndo Map.empty $ fold
     [ Endo . const <$> loadedMapE
     , (\newComment -> Endo $ Map.insert (Comment.id newComment) newComment) <$> newCommentE
+    , ( foldMap (Endo . Map.delete) . Map.keys ) <$> deleteComment
     ]
 
   -- Make a form that will add a comment with the backend and return
@@ -236,9 +238,9 @@ comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
     let newE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) submitResE
     pure newE
 
-  -- This takes the Map Int Comment and displays them all  
-  void $ list commentsMapDyn $ \commentDupeDyn -> do
-    -- But we have to filter out duplicate updates to prevent 
+  -- This takes the Map Int Comment and displays them all
+  deleteComment :: Event t (Map.Map Int ()) <- listViewWithKey commentsMapDyn $ \cId commentDupeDyn -> do
+    -- But we have to filter out duplicate updates to prevent
     -- setting the text in unnecessarily.
     -- DISCUSS! :)
     commentDyn <- holdUniqDyn commentDupeDyn
@@ -253,4 +255,11 @@ comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
         text " "
         routeLinkDynClass "comment-author" authorRouteDyn $ dynText $ Profile.username <$> profileDyn
         elClass "span" "date-posted" $ display $ Comment.createdAt <$> commentDyn
+        deleteClickE <- elClass "span" "mod-options" $ do
+          (trashElt,_) <- elClass' "i" "ion-trash-a" blank
+          pure $ domEvent Click trashElt
+        deleteResE <- getClient ^. apiArticles . articlesArticle
+          . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleCommentDelete
+          . to (\f -> f (pure . constDyn . pure $ cId)  (constDyn . pure . pure $ Account.token acct) deleteClickE)
+        pure $ fmapMaybe (void . reqSuccess . runIdentity) deleteResE
   pure ()

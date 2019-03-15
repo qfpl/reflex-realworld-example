@@ -3,14 +3,9 @@
 {-# LANGUAGE TypeOperators #-}
 module RealWorld.Conduit.Api.Articles where
 
+import           Servant.API
+
 import           Data.Text                                    (Text)
-import           Servant.API                                  ((:<|>), (:>),
-                                                               Capture, Get,
-                                                               JSON,
-                                                               PostCreated,
-                                                               QueryParam,
-                                                               QueryParams,
-                                                               ReqBody)
 import           Servant.Auth                                 (Auth, JWT)
 
 import           RealWorld.Conduit.Api.Articles.Article       (Article)
@@ -43,7 +38,10 @@ type ArticlesApi =
           Auth '[JWT] Int
           :> ReqBody '[JSON] (Namespace "comment" CreateComment)
           :> PostCreated '[JSON] (Namespace "comment" Comment)
+        ) :<|> (
+          Capture "commentId" Int
+          :> Auth '[JWT] Int
+          :>  DeleteNoContent '[JSON] NoContent)
         )
       )
     )
-  )

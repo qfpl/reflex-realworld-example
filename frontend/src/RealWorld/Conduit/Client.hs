@@ -19,7 +19,7 @@ import           Control.Applicative                          (liftA2)
 import           Data.Proxy                                   (Proxy (Proxy))
 import           Data.Text                                    (Text)
 import           Servant.API                                  ((:<|>) ((:<|>)),
-                                                               (:>))
+                                                               (:>), NoContent)
 import           Servant.Auth                                 (Auth, JWT)
 import           Servant.Common.Req                           (QParam, Req,
                                                                headers)
@@ -79,6 +79,11 @@ data ArticleClient f t m = ArticleClient
     -> Dynamic t (f (Either Text (Namespace "comment" CreateComment)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comment" Comment))))
+  , _articleCommentDelete
+    :: f (Dynamic t (Either Text Int))
+    -> Dynamic t (f (Maybe Text))
+    -> Event t ()
+    -> m (Event t (f (ReqResult () NoContent)))
   }
 makeLenses ''ArticleClient
 
@@ -136,7 +141,7 @@ getClient = ApiClient { .. } :: ApiClient f t m
         _articlesList :<|> _articlesCreate :<|> articleC = apiArticlesC
         _articlesArticle slug = ArticleClient { .. }
           where
-            _articleGet  :<|> (_articleComments :<|> _articleCommentCreate) = articleC slug
+            _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC slug
 
 -- TODO : Move this to servant Auth after some tidy up
 instance (HasClientMulti t m api f tag, Reflex t, Applicative f)
