@@ -15,7 +15,9 @@ library
                , obelisk-route
                , reflex-dom
                , obelisk-generated-static
-               , pandoc
+               , lucid
+               , mmark
+               , megaparsec
                , text
                , servant
                , servant-client-core

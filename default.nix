@@ -11,5 +11,13 @@ project ./. ({ pkgs, ... }: {
   overrides = (super: self: {
     reflex-dom-storage = (import ./nix/reflex-dom-storage) super self;
     servant-reflex = (import ./nix/servant-reflex) super self;
+    entropy = (import ./nix/entropy) super self;
+    mmark = pkgs.haskell.lib.dontCheck self.mmark;
+    email-validate = pkgs.haskell.lib.dontCheck self.email-validate;
+    #silently = pkgs.haskell.lib.dontCheck self.silently;
+    #mockery = pkgs.haskell.lib.dontCheck self.mockery;
+    #unliftio = pkgs.haskell.lib.dontCheck self.unliftio;
+    #servant = pkgs.haskell.lib.dontCheck self.servant;
+    #conduit = pkgs.haskell.lib.dontCheck self.conduit;
   });
 })

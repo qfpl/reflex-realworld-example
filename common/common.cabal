@@ -7,13 +7,32 @@ library
   hs-source-dirs: src
   build-depends: base
                , obelisk-route
+               , aeson
+               , categories
+               , containers
                , insert-ordered-containers
                , lens
                , mtl
                , servant
                , servant-auth
                , text
+               , time
 
   exposed-modules:
-    Common.Api
     Common.Route
+    RealWorld.Conduit.Api
+    RealWorld.Conduit.Api.Attribute
+    RealWorld.Conduit.Api.Namespace
+    RealWorld.Conduit.Api.Articles
+    RealWorld.Conduit.Api.Articles.Articles
+    RealWorld.Conduit.Api.Articles.Comment
+    RealWorld.Conduit.Api.Articles.Article
+    RealWorld.Conduit.Api.Articles.Attributes
+    RealWorld.Conduit.Api.Articles.CreateComment
+    RealWorld.Conduit.Api.User
+    RealWorld.Conduit.Api.User.Update
+    RealWorld.Conduit.Api.User.Account
+    RealWorld.Conduit.Api.User.Profile
+    RealWorld.Conduit.Api.Users
+    RealWorld.Conduit.Api.Users.Credentials
+    RealWorld.Conduit.Api.Users.Registrant

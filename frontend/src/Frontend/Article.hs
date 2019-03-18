@@ -12,30 +12,29 @@ module Frontend.Article where
 import           Control.Lens
 import           Reflex.Dom.Core                              hiding (Element)
 
-import           Control.Error                                (hush)
-import           Control.Monad                                ((<=<))
 import           Control.Monad.Fix                            (MonadFix)
 import           Control.Monad.IO.Class                       (MonadIO)
 import           Data.Default                                 (def)
-import           Data.Functor                                 (void)
 import           Data.Foldable                                (fold)
+import           Data.Functor                                 (void)
 import qualified Data.Map                                     as Map
 import           Data.Maybe                                   (fromMaybe)
 import           Data.Monoid                                  (Endo (Endo),
                                                                appEndo)
 import           Data.Text                                    (Text)
+import qualified Data.Text.Lazy                               as TL
 import           JSDOM.Document                               (createElement)
 import           JSDOM.Element                                (setInnerHTML)
 import           JSDOM.Types                                  (liftJSM)
+import qualified Lucid                                        as L
 import           Obelisk.Route.Frontend                       (pattern (:/), R,
                                                                RouteToUrl,
                                                                Routed, SetRoute,
                                                                askRoute,
                                                                routeLink)
 import           Servant.Common.Req                           (reqSuccess)
-import           Text.Pandoc                                  (readMarkdown,
-                                                               runPure,
-                                                               writeHtml5String)
+import qualified Text.MMark                                   as MMark
+
 
 import           Common.Route                                 (DocumentSlug (..),
                                                                FrontendRoute (..),
@@ -55,8 +54,8 @@ import           RealWorld.Conduit.Api.Namespace              (Namespace (..),
 import qualified RealWorld.Conduit.Api.User.Account           as Account
 import qualified RealWorld.Conduit.Api.User.Profile           as Profile
 import           RealWorld.Conduit.Client                     (apiArticles, articleCommentCreate,
-                                                               articleComments,
                                                                articleCommentDelete,
+                                                               articleComments,
                                                                articleGet,
                                                                articlesArticle,
                                                                getClient)
@@ -109,9 +108,6 @@ article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
         -- Do the comments UI below
         comments slugDyn
 
-markDownToHtml5 :: Text -> Maybe Text
-markDownToHtml5 t = hush . runPure . (writeHtml5String def <=< readMarkdown def) $ t
-
 articleMeta
   :: ( DomBuilder t m
      , RouteToUrl (R FrontendRoute) m
@@ -161,7 +157,7 @@ articleContent
   -> m ()
 articleContent articleDyn = prerender (text "Loading...") $ do
   -- Just call pandoc over the article body like it is no big deal
-  let htmlDyn = fromMaybe "" . (markDownToHtml5 <=< (fmap Article.body)) <$> articleDyn
+  let htmlDyn = (fromMaybe "" . fmap (markDownToHtml5 . Article.body)) <$> articleDyn
   elClass "div" "row article-content" $ do
     d <- askDocument
     -- We have to sample the initial value to set it on creation
@@ -182,6 +178,12 @@ articleContent articleDyn = prerender (text "Loading...") $ do
     performEvent_ $ (liftJSM . setInnerHTML e) <$> updated htmlDyn
     -- Put out raw element into our DomBuilder
     placeRawElement e
+
+markDownToHtml5 :: Text -> Text
+markDownToHtml5 t = case MMark.parse "" t of
+  Left _  -> ""
+  Right r -> TL.toStrict . L.renderText . MMark.render $ r
+
 
 comments
   :: forall t m s js
