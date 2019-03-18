@@ -7,6 +7,7 @@ library
   hs-source-dirs: src
   build-depends: base
                , common
+               , aeson
                , containers
                , dependent-sum
                , lens
@@ -15,11 +16,23 @@ library
                , obelisk-route
                , reflex-dom
                , obelisk-generated-static
-               , lucid
-               , mmark
-               , megaparsec
+               --, lucid
+               --, mmark
                , text
+               , primitive
+               , ref-tf
+               , reflex
+               , monad-control
+               , dependent-map
+               , dependent-sum-template
+               , transformers
+               , mtl
+               , constraints
+               , jsaddle
+               , jsaddle-dom
+               , data-default
                , servant
+               , servant-auth
                , servant-client-core
                , reflex-dom-storage
                , servant-reflex

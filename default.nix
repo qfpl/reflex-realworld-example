@@ -14,10 +14,10 @@ project ./. ({ pkgs, ... }: {
     entropy = (import ./nix/entropy) super self;
     mmark = pkgs.haskell.lib.dontCheck self.mmark;
     email-validate = pkgs.haskell.lib.dontCheck self.email-validate;
+    servant = pkgs.haskell.lib.dontCheck self.servant;
     #silently = pkgs.haskell.lib.dontCheck self.silently;
     #mockery = pkgs.haskell.lib.dontCheck self.mockery;
     #unliftio = pkgs.haskell.lib.dontCheck self.unliftio;
-    #servant = pkgs.haskell.lib.dontCheck self.servant;
     #conduit = pkgs.haskell.lib.dontCheck self.conduit;
   });
 })
