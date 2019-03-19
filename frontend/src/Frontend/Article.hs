@@ -23,9 +23,9 @@ import           Data.Monoid                                  (Endo (Endo),
                                                                appEndo)
 import           Data.Text                                    (Text)
 import qualified Data.Text.Lazy                               as TL
-import           JSDOM.Document                               (createElement)
-import           JSDOM.Element                                (setInnerHTML)
-import           JSDOM.Types                                  (liftJSM)
+import           GHCJS.DOM.Document                               (createElement)
+import           GHCJS.DOM.Element                                (setInnerHTML)
+import           GHCJS.DOM.Types                                  (liftJSM)
 --import qualified Lucid                                        as L
 import           Obelisk.Route.Frontend                       (pattern (:/), R,
                                                                RouteToUrl,

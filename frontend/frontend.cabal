@@ -29,6 +29,7 @@ library
                , mtl
                , constraints
                , jsaddle
+               , ghcjs-dom
                , jsaddle-dom
                , data-default
                , servant
@@ -41,13 +42,16 @@ library
     , Frontend.Article
     , Frontend.ArticlePreview
     , Frontend.Editor
+    , Frontend.FrontendStateT
     , Frontend.HomePage
+    , Frontend.LocalStorageKey
     , Frontend.Login
     , Frontend.Nav
     , Frontend.Profile
     , Frontend.Register
     , Frontend.Settings
     , Frontend.Utils
+    , RealWorld.Conduit.Client
 
   ghc-options: -Wall
 

@@ -55,9 +55,6 @@ import qualified RealWorld.Conduit.Api.User.Account as Account
 import           RealWorld.Conduit.Client            (apiUser, getClient,
                                                       userCurrent)
 
-import System.Entropy
-import Control.Monad.IO.Class (liftIO)
-
 mapStorageT :: (forall x. m x -> n x) -> StorageT t k m a -> StorageT t k n a
 mapStorageT f = StorageT . mapReaderT (mapEventWriterT f) . unStorageT
 
@@ -86,10 +83,6 @@ htmlBody
     )
   => RoutedT t (R FrontendRoute) m ()
 htmlBody = prerender (text "Loading...") $ mdo
-  pbbE <- getPostBuild
-  rndE <- performEvent $ ffor pbbE $ \_ -> liftIO $ getEntropy 10
-  rndDyn <- holdDyn "" rndE
-  display rndDyn
   mapRoutedT unravelAppState $ do
     jwtDyn <- askStorageTag LocalStorageJWT
     pbE <- getPostBuild
