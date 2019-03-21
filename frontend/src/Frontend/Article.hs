@@ -26,14 +26,14 @@ import qualified Data.Text.Lazy                               as TL
 import           GHCJS.DOM.Document                               (createElement)
 import           GHCJS.DOM.Element                                (setInnerHTML)
 import           GHCJS.DOM.Types                                  (liftJSM)
---import qualified Lucid                                        as L
+import qualified Lucid                                        as L
 import           Obelisk.Route.Frontend                       (pattern (:/), R,
                                                                RouteToUrl,
                                                                Routed, SetRoute,
                                                                askRoute,
                                                                routeLink)
 import           Servant.Common.Req                           (reqSuccess)
---import qualified Text.MMark                                   as MMark
+import qualified Text.MMark                                   as MMark
 
 
 import           Common.Route                                 (DocumentSlug (..),
@@ -180,10 +180,10 @@ articleContent articleDyn = prerender (text "Loading...") $ do
     placeRawElement e
 
 markDownToHtml5 :: Text -> Text
-markDownToHtml5 t = t
-  --case MMark.parse "" t of
-  --Left _  -> ""
-  --Right r -> TL.toStrict . L.renderText . MMark.render $ r
+markDownToHtml5 t =
+  case MMark.parse "" t of
+    Left _  -> ""
+    Right r -> TL.toStrict . L.renderText . MMark.render $ r
 
 
 comments

@@ -16,8 +16,8 @@ library
                , obelisk-route
                , reflex-dom
                , obelisk-generated-static
-               --, lucid
-               --, mmark
+               , lucid
+               , mmark
                , text
                , primitive
                , ref-tf
@@ -54,6 +54,8 @@ library
     , RealWorld.Conduit.Client
 
   ghc-options: -Wall
+  if impl(ghcjs)
+    ghcjs-options:    +RTS -K2048M -RTS -Wall
 
 executable frontend
   main-is: main.hs
@@ -69,3 +71,6 @@ executable frontend
   ghc-options: -threaded
   if os(darwin)
      ghc-options: -dynamic
+
+  if impl(ghcjs)
+    ghcjs-options:    +RTS -K2048M -RTS -Wall
