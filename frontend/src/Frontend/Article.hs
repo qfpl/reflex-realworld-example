@@ -93,7 +93,7 @@ article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
 
   elClass "div" "banner" $
     elClass "div" "container" $ do
-      el "h1" $ text "How to build webapps that scale"
+      el "h1" $ dynText $ maybe "" Article.title <$> articleDyn
       -- We are a little clumsy with dealing with not having
       -- an article. We just disply a blank element while we
       -- dont have one. Should be better. :)
