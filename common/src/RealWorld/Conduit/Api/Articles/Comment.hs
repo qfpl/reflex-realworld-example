@@ -7,7 +7,7 @@ import           Data.Aeson                         (FromJSON (..), ToJSON (..))
 import           Data.Text                          (Text)
 import           Data.Time                          (UTCTime)
 import           GHC.Generics                       (Generic)
-import           RealWorld.Conduit.Api.User.Profile (Profile)
+import           RealWorld.Conduit.Api.Profile      (Profile)
 
 data Comment = Comment
   { id        :: Int

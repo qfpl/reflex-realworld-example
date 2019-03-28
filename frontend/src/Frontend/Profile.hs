@@ -27,8 +27,10 @@ import           Frontend.Utils                          (buttonClass,
 import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
 import           RealWorld.Conduit.Api.Namespace         (unNamespace)
 import qualified RealWorld.Conduit.Api.User.Account      as Account
+import qualified RealWorld.Conduit.Api.Profile           as Profile
 import           RealWorld.Conduit.Client                (apiArticles, apiUser,
                                                           articlesList,
+                                                          apiProfile, profileGet,
                                                           getClient,
                                                           userCurrent)
 
@@ -52,22 +54,22 @@ profile usernameDyn =
     elClass "div" "container" $
       elClass "div" "row" $
         elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender (text "Loading") $ do
-          tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
+          --tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
-          loadResE <- getClient ^. apiUser . userCurrent . to (\f -> f
-            (Identity <$> tokDyn)
-            pbE
+          loadResE <- getClient ^. apiProfile . profileGet . to (\f -> f
+            (Identity $ pure . unUsername <$> usernameDyn)
+            (leftmost [pbE,void . updated $ usernameDyn]) 
             )
           let loadSuccessE = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
           void $ widgetHold (text "Loading") $ ffor loadSuccessE $
             maybe blank $ \acct -> do
-              profileImage "user-img" (constDyn $ Account.image acct)
-              el "h4" $ text $ Account.username acct
-              el "p" $ text $ Account.bio acct
+              profileImage "user-img" (constDyn $ Profile.image acct)
+              el "h4" $ text $ Profile.username acct
+              el "p" $ text $ Profile.bio acct
               _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" $ do
                 elClass "i" "ion-plus-round" blank
                 text " Follow "
-                text $ Account.username acct
+                text $ Profile.username acct
               pure ()
   elClass "div" "container" $
     elClass "div" "row" $

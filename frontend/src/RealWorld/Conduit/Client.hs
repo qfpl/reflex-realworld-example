@@ -37,6 +37,7 @@ import           RealWorld.Conduit.Api.Articles.Attributes    (CreateArticle)
 import           RealWorld.Conduit.Api.Articles.Comment       (Comment)
 import           RealWorld.Conduit.Api.Articles.CreateComment (CreateComment)
 import           RealWorld.Conduit.Api.Namespace              (Namespace)
+import           RealWorld.Conduit.Api.Profile                (Profile)
 import           RealWorld.Conduit.Api.User.Account           (Account)
 import           RealWorld.Conduit.Api.User.Update            (UpdateUser)
 import           RealWorld.Conduit.Api.Users.Credentials      (Credentials)
@@ -106,10 +107,19 @@ data ArticlesClient f t m = ArticlesClient
   }
 makeLenses ''ArticlesClient
 
+data ProfileClient f t m = ProfileClient
+  { _profileGet 
+    :: (f (Dynamic t (Either Text Text)))
+    -> Event t ()
+    -> m (Event t (f (ReqResult () (Namespace "profile" Profile))))
+  }
+makeLenses ''ProfileClient
+
 data ApiClient f t m = ApiClient
   { _apiUsers    :: UsersClient f t m
   , _apiUser     :: UserClient f t m
   , _apiArticles :: ArticlesClient f t m
+  , _apiProfile  :: ProfileClient f t m
   }
 makeLenses ''ApiClient
 
@@ -129,7 +139,7 @@ getClient = ApiClient { .. } :: ApiClient f t m
     bp = constDyn $ baseUrl
     c :: ClientMulti t m Api f ()
     c = clientA api (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
-    apiUsersC :<|> apiUserC :<|> apiArticlesC = c
+    apiUsersC :<|> apiUserC :<|> apiArticlesC :<|> apiProfileC = c
     _apiUsers = UsersClient { .. }
       where
         _usersLogin :<|> _usersRegister = apiUsersC
@@ -142,6 +152,9 @@ getClient = ApiClient { .. } :: ApiClient f t m
         _articlesArticle slug = ArticleClient { .. }
           where
             _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC slug
+    _apiProfile = ProfileClient { .. }
+      where 
+        _profileGet = apiProfileC
 
 -- TODO : Move this to servant Auth after some tidy up
 instance (HasClientMulti t m api f tag, Reflex t, Applicative f)

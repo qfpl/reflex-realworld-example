@@ -52,7 +52,7 @@ import qualified RealWorld.Conduit.Api.Articles.CreateComment as CreateComment
 import           RealWorld.Conduit.Api.Namespace              (Namespace (..),
                                                                unNamespace)
 import qualified RealWorld.Conduit.Api.User.Account           as Account
-import qualified RealWorld.Conduit.Api.User.Profile           as Profile
+import qualified RealWorld.Conduit.Api.Profile                as Profile
 import           RealWorld.Conduit.Client                     (apiArticles, articleCommentCreate,
                                                                articleCommentDelete,
                                                                articleComments,

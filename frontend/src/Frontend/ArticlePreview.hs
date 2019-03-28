@@ -25,7 +25,7 @@ import           RealWorld.Conduit.Api.Articles.Article  (Article)
 import qualified RealWorld.Conduit.Api.Articles.Article  as Article
 import           RealWorld.Conduit.Api.Articles.Articles (Articles)
 import qualified RealWorld.Conduit.Api.Articles.Articles as Articles
-import qualified RealWorld.Conduit.Api.User.Profile      as Profile
+import qualified RealWorld.Conduit.Api.Profile           as Profile
 
 articlesPreview
   :: ( DomBuilder t m

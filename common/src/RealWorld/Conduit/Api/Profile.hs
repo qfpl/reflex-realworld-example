@@ -1,13 +1,19 @@
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators      #-}
 module RealWorld.Conduit.Api.Profile where
 
 import           Data.Aeson   (FromJSON, ToJSON)
 import           Data.Text    (Text)
 import           GHC.Generics (Generic)
+import           Servant.API  ((:<|>), (:>), Get, JSON, Capture)
+import           Servant.Auth (Auth, JWT)
 
-type ProfileApi = Capture "username" Text :> Get '[JSON] Profile
+import           RealWorld.Conduit.Api.Namespace         (Namespace)
+
+type ProfileApi = Capture "username" Text :> Get '[JSON] (Namespace "profile" Profile)
 
 data Profile = Profile
   { id        :: Int

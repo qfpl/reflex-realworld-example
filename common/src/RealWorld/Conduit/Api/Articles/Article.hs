@@ -9,7 +9,7 @@ import           Data.Set                            (Set)
 import           Data.Text                           (Text)
 import           Data.Time                           (UTCTime)
 import           GHC.Generics                        (Generic)
-import           RealWorld.Conduit.Api.User.Profile  (Profile)
+import           RealWorld.Conduit.Api.Profile       (Profile)
 
 data Article = Article
   { id             :: Int
