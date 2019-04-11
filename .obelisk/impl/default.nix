@@ -5,5 +5,3 @@ import ((import <nixpkgs> {}).fetchFromGitHub (
        private = json.private or false;
      }
 ))
-# For local testing of my obelisk fork
-# import /home/bkolera/src/github/obsidiansystems/obelisk

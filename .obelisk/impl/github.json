@@ -1,7 +1,7 @@
 {
-  "owner": "benkolera",
+  "owner": "obsidiansystems",
   "repo": "obelisk",
-  "branch": "master",
-  "rev": "fafcb1bec450a09d2bec28803994ecf701bb6c17",
-  "sha256": "0fi5640dgm56ic1l8w7cdwg0330xxksn0yijr2xv58fcmkasp92j"
+  "branch": "develop",
+  "rev": "20ba787575807808d5872689a4787ae75d446de5",
+  "sha256": "1iqvlz6z8wbd1sfq4bz5jw9swsxgpprk9cwq9s7d4lp1542iidhc"
 }

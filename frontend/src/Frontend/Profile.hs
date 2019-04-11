@@ -6,33 +6,25 @@
 {-# LANGUAGE PatternSynonyms       #-}
 module Frontend.Profile where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Data.Bool                               (bool)
-import           Data.Functor                            (void)
-import           Obelisk.Route.Frontend                  (pattern (:/), R,
-                                                          RouteToUrl, RoutedT,
-                                                          SetRoute, askRoute)
-import           Servant.Common.Req                      (QParam (QNone),
-                                                          reqSuccess)
+import Data.Bool              (bool)
+import Data.Functor           (void)
+import Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, askRoute)
+import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
-import           Common.Route                            (FrontendRoute (..),
-                                                          ProfileRoute (..),
+import           Common.Route                            (FrontendRoute (..), ProfileRoute (..),
                                                           Username (..))
 import           Frontend.ArticlePreview                 (articlesPreview, profileImage)
 import           Frontend.FrontendStateT
-import           Frontend.Utils                          (buttonClass,
-                                                          routeLinkDynClass)
+import           Frontend.Utils                          (buttonClass, routeLinkDynClass)
 import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
 import           RealWorld.Conduit.Api.Namespace         (unNamespace)
-import qualified RealWorld.Conduit.Api.User.Account      as Account
 import qualified RealWorld.Conduit.Api.Profile           as Profile
-import           RealWorld.Conduit.Client                (apiArticles, apiUser,
-                                                          articlesList,
-                                                          apiProfile, profileGet,
-                                                          getClient,
-                                                          userCurrent)
+import qualified RealWorld.Conduit.Api.User.Account      as Account
+import           RealWorld.Conduit.Client                (apiArticles, apiProfile, articlesList, getClient,
+                                                          profileGet)
 
 profile
   :: ( DomBuilder t m
@@ -58,7 +50,7 @@ profile usernameDyn =
           pbE <- getPostBuild
           loadResE <- getClient ^. apiProfile . profileGet . to (\f -> f
             (Identity $ pure . unUsername <$> usernameDyn)
-            (leftmost [pbE,void . updated $ usernameDyn]) 
+            (leftmost [pbE,void . updated $ usernameDyn])
             )
           let loadSuccessE = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
           void $ widgetHold (text "Loading") $ ffor loadSuccessE $

@@ -1,7 +1,0 @@
-* Tasks
-** Favouriting (post and person)
-** ArticleList Filtering
-** 422 Processing
-** Pagination
-* Notes
-** QueryT / Incremental

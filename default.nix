@@ -9,17 +9,17 @@ project ./. ({ pkgs, ... }: {
   ios.bundleName = "Obelisk Minimal Example";
   withHoogle = true;
   overrides = (self: super: {
-    reflex-dom-storage = (import ./nix/reflex-dom-storage) self super;
-    servant-reflex = (import ./nix/servant-reflex) self super;
-    mmark = pkgs.haskell.lib.overrideCabal 
-     ((import ./nix/mmark) self super)
+    reflex-dom-storage = (import ./dep/reflex-dom-storage) self super;
+    servant-reflex = (import ./dep/servant-reflex) self super;
+    mmark = pkgs.haskell.lib.overrideCabal
+     ((import ./dep/mmark) self super)
      (drv: {
        doHaddock = false;
        doCheck   = false;
      });
-    megaparsec = pkgs.haskell.lib.dontCheck ((import ./nix/megaparsec) self super);
-    modern-uri = pkgs.haskell.lib.dontCheck ((import ./nix/modern-uri) self super);
-    neat-interpolation = pkgs.haskell.lib.dontCheck ((import ./nix/neat-interpolation) self super);
+    megaparsec = pkgs.haskell.lib.dontCheck ((import ./dep/megaparsec) self super);
+    modern-uri = pkgs.haskell.lib.dontCheck ((import ./dep/modern-uri) self super);
+    neat-interpolation = pkgs.haskell.lib.dontCheck ((import ./dep/neat-interpolation) self super);
     email-validate = pkgs.haskell.lib.dontCheck super.email-validate;
     servant = pkgs.haskell.lib.dontCheck super.servant;
   });
