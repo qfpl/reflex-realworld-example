@@ -29,13 +29,13 @@ import           RealWorld.Conduit.Client
 register
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
+     , Prerender js t m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
      , MonadIO (Performable m)
-     , EventWriter t (NonEmpty e) m
+     , EventWriter t (NonEmpty e) (Client m)
      , AsFrontendEvent e
      , HasFrontendState t s m
      , HasLoggedInAccount s

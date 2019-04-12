@@ -33,10 +33,14 @@ profile
      , RouteToUrl (R FrontendRoute) m
      , HasFrontendState t s m
      , HasLoggedInAccount s
-     , Prerender js m
+     , Prerender js t m
      , TriggerEvent t m
      , PerformEvent t m
      , MonadHold t m
+     , Monad (Client m)
+     , HasFrontendState t s (Client m)
+     , RouteToUrl (R FrontendRoute) (Client m)
+     , SetRoute t (R FrontendRoute) (Client m)
      )
   => Dynamic t Username
   -> RoutedT t (Maybe (R ProfileRoute)) m ()
@@ -45,7 +49,7 @@ profile usernameDyn =
   elClass "div" "user-info" $
     elClass "div" "container" $
       elClass "div" "row" $
-        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender (text "Loading") $ do
+        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender_ (text "Loading") $ do
           --tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
           loadResE <- getClient ^. apiProfile . profileGet . to (\f -> f
@@ -71,7 +75,7 @@ profile usernameDyn =
             rDyn <- askRoute
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
-        prerender (text "Loading...") $ do
+        prerender_ (text "Loading...") $ do
           tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
           artE <- getClient ^. apiArticles . articlesList . to (\f -> f
@@ -80,7 +84,6 @@ profile usernameDyn =
             (constDyn . Identity $ [])
             (Identity . pure . unUsername <$> usernameDyn)
             (constDyn . Identity $ [])
-            --(Identity . pure . unUsername <$> usernameDyn)
             (Identity <$> tokDyn)
             (leftmost [pbE,void $ updated tokDyn])
             )

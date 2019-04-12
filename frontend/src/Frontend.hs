@@ -79,20 +79,18 @@ type AppState t m
 
 htmlBody
   :: forall t js m
-  . ( ObeliskWidget t js (R FrontendRoute) m
+  . ( ObeliskWidget js t (R FrontendRoute) m
     )
   => RoutedT t (R FrontendRoute) m ()
-htmlBody = prerender (text "Loading...") $ mdo
-  mapRoutedT unravelAppState $ do
-    jwtDyn <- askStorageTag LocalStorageJWT
-    pbE <- getPostBuild
-    currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
-    currentUserResUpdate currentUserE
-    stateDyn <- askFrontendState
-    nav ((view loggedInAccount) <$> stateDyn)
-    subRoute_ pages
-    footer
-  pure ()
+htmlBody = mapRoutedT unravelAppState $ prerender_ blank $ do
+  jwtDyn <- askStorageTag LocalStorageJWT
+  pbE <- getPostBuild
+  currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
+  currentUserResUpdate currentUserE
+  stateDyn <- askFrontendState
+  nav ((view loggedInAccount) <$> stateDyn)
+  subRoute_ pages
+  footer
   where
     currentUserResUpdate
       :: Event t (Identity (ReqResult () (Namespace "user" Account)))
@@ -103,7 +101,7 @@ htmlBody = prerender (text "Loading...") $ mdo
       . fmapMaybe (reqSuccess . runIdentity)
 
     unravelAppState :: AppState t m () -> m ()
-    unravelAppState m = prerender (text "Loading...") $ mdo
+    unravelAppState m = mdo
       lsDyn <- foldDyn appEndo initialFrontendData (foldMap updateFrontendData <$> sE)
       sE <- flip runFrontendStateT lsDyn $ do
         runStorageT LocalStorage $ do
@@ -118,7 +116,7 @@ htmlBody = prerender (text "Loading...") $ mdo
       LogIn a -> pdmInsert LocalStorageJWT (Account.token a)
 
     pages
-      :: ( ObeliskWidget t x (R FrontendRoute) m
+      :: ( ObeliskWidget js t (R FrontendRoute) m
          )
       => FrontendRoute a
       -> RoutedT t a

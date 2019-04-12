@@ -28,12 +28,13 @@ import           RealWorld.Conduit.Client
 login
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
+     , Prerender js t m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
      , EventWriter t (NonEmpty e) m
+     , EventWriter t (NonEmpty e) (Client m)
      , AsFrontendEvent e
      , HasLoggedInAccount s
      , HasFrontendState t s m
@@ -49,7 +50,7 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
         -- Put a link here that goes to signup
         elClass "p" "text-xs-center" $
           routeLink (FrontendRoute_Register :/ ()) $ text "Need an account?"
-        
+
         elClass "ul" "error-messages" $
           blank
 
@@ -76,16 +77,16 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
           let credentials = Credentials
                 <$> emailI ^. textInput_value
                 <*> passI ^. textInput_value
-          
+
           -- Do a backend call with the Dynamic t Credentials and the Submit Click
-          resE <- getClient ^. apiUsers . usersLogin . to (\f -> f 
-            (pure . pure . Namespace <$> credentials) 
+          resE <- getClient ^. apiUsers . usersLogin . to (\f -> f
+            (pure . pure . Namespace <$> credentials)
             submitE
             )
 
           -- We do some work to ignore failures and unwrap the result
           let successE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) $ resE
-          
+
           -- When we have a success fire off, we fire a login up the state tree
           -- This sets the JWT token into our state and local storage
           tellEvent $ pure . (_LogIn #) <$> successE

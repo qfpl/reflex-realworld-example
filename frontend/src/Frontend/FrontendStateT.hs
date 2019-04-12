@@ -70,7 +70,7 @@ newtype FrontendStateT t s m a = FrontendStateT
   { unFrontendStateT :: ReaderT (Dynamic t s) m a }
   deriving (Functor, Applicative, Monad, MonadFix, MonadTrans, NotReady t,
             MonadHold t, MonadSample t, PostBuild t, TriggerEvent t, MonadIO,
-            MonadReflexCreateTrigger t, HasDocument)
+            MonadReflexCreateTrigger t, HasDocument, DomRenderHook t)
 
 runFrontendStateT :: FrontendStateT t s m a -> Dynamic t s -> m a
 runFrontendStateT t = runReaderT (unFrontendStateT t)
@@ -85,7 +85,7 @@ viewFrontendState
 viewFrontendState g = fmap (^. g) <$> askFrontendState
 
 reviewFrontendState
-  :: (HasFrontendState t s m, Functor (Dynamic t), Functor m)
+  :: (HasFrontendState t s m, Functor (Dynamic t), Monad m)
   => Getting (First a) s a
   -> m (Dynamic t (Maybe a))
 reviewFrontendState g = fmap (^? g) <$> askFrontendState
@@ -166,8 +166,13 @@ instance HasJSContext m => HasJSContext (FrontendStateT t s m) where
   type JSContextPhantom (FrontendStateT t s m) = JSContextPhantom m
   askJSContext = lift askJSContext
 
-instance Prerender js m => Prerender js (FrontendStateT t s m) where
-  prerenderClientDict = fmap (\Dict -> Dict) (prerenderClientDict :: Maybe (Dict (PrerenderClientConstraint js m)))
+
+
+instance (Prerender js t m, Monad m) => Prerender js t (FrontendStateT t s m) where
+  type Client (FrontendStateT t s m) = FrontendStateT t s (Client m)
+  prerender server client = FrontendStateT $ do
+    env <- ask
+    lift $ prerender (runReaderT (unFrontendStateT server) env) (runReaderT (unFrontendStateT client) env)
 
 instance Requester t m => Requester t (FrontendStateT t s m) where
   type Request (FrontendStateT t s m) = Request m

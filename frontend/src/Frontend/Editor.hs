@@ -34,8 +34,9 @@ editor
   :: forall t m js s
   . ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
+     , Prerender js t m
      , SetRoute t (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) (Client m)
      , HasFrontendState t s m
      , HasLoggedInAccount s
      , TriggerEvent t m

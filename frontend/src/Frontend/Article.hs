@@ -63,10 +63,10 @@ import           RealWorld.Conduit.Client                     (apiArticles, arti
 article
   :: forall t m s js
   .  ( DomBuilder t m
-     , Routed t DocumentSlug m
-     , SetRoute t (R FrontendRoute) m
-     , RouteToUrl (R FrontendRoute) m
      , PostBuild t m
+     , Routed t DocumentSlug m
+     , RouteToUrl (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) m
      , MonadHold t m
      , MonadFix m
      , HasDocument m
@@ -74,10 +74,13 @@ article
      , HasLoggedInAccount s
      , PerformEvent t m
      , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
+     , Routed t DocumentSlug (Client m)
+     , RouteToUrl (R FrontendRoute) (Client m)
+     , SetRoute t (R FrontendRoute) (Client m)
      )
   => m ()
-article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
+article = elClass "div" "article-page" $ prerender_ (text "Loading...") $ do
   -- We ask our route for the document slug and make the backend call on load
   slugDyn <- askRoute
   pbE <- getPostBuild
@@ -106,7 +109,9 @@ article = elClass "div" "article-page" $ prerender (text "Loading...") $ do
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-8 offset-md-2" $ do
         -- Do the comments UI below
-        comments slugDyn
+        -- TODO: This was giving a bad type error with prerender stuff.
+        --comments slugDyn
+        blank
 
 articleMeta
   :: ( DomBuilder t m
@@ -151,11 +156,11 @@ articleContent
      , MonadHold t m
      , PerformEvent t m
      , HasDocument m
-     , Prerender js m
+     , Prerender js t m
      )
   => Dynamic t (Maybe Article.Article)
   -> m ()
-articleContent articleDyn = prerender (text "Loading...") $ do
+articleContent articleDyn = prerender_ (text "Loading...") $ do
   -- Just call pandoc over the article body like it is no big deal
   let htmlDyn = (fromMaybe "" . fmap (markDownToHtml5 . Article.body)) <$> articleDyn
   elClass "div" "row article-content" $ do
@@ -191,19 +196,21 @@ comments
   .  ( DomBuilder t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) (Client m)
+     , RouteToUrl (R FrontendRoute) (Client m)
      , PostBuild t m
      , MonadHold t m
      , MonadFix m
      , HasFrontendState t s m
      , HasLoggedInAccount s
-     , Prerender js m
+     , Prerender js t m
      , TriggerEvent t m
      , PerformEvent t m
      , MonadIO (Performable m)
      )
   => Dynamic t DocumentSlug
   -> m ()
-comments slugDyn = userWidget $ \acct -> prerender (text "Loading...") $ mdo
+comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
   -- Load the comments when this widget is built
   pbE <- getPostBuild
   loadResE <- getClient ^. apiArticles . articlesArticle

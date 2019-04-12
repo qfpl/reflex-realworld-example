@@ -29,18 +29,18 @@ homePage
   :: forall t m s js
   . ( PostBuild t m
      , DomBuilder t m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
+     , RouteToUrl (R FrontendRoute) (Client m)
+     , SetRoute t (R FrontendRoute) (Client m)
      --, MonadSample t m
      , MonadHold t m
      , TriggerEvent t m
      , PerformEvent t m
      , HasLoggedInAccount s
-     , HasFrontendState t s m
-     , Prerender js m
+     , HasFrontendState t s (Client m)
+     , Prerender js t m
      )
   => m ()
-homePage = prerender (text "Loading...") $ elClass "div" "home-page" $ do
+homePage = prerender_ (text "Loading...") $ elClass "div" "home-page" $ do
   tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
   pbE <- getPostBuild
   artE <- getClient ^. apiArticles . articlesList . to (\f -> f

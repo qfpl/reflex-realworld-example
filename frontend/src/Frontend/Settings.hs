@@ -32,12 +32,13 @@ import           RealWorld.Conduit.Client           (apiUser, userCurrent, userU
 settings
   :: ( DomBuilder t m
      , PostBuild t m
-     , Prerender js m
+     , Prerender js t m
      , TriggerEvent t m
      , PerformEvent t m
      , MonadIO (Performable m)
      , SetRoute t (R FrontendRoute) m
-     , EventWriter t (NonEmpty FrontendEvent) m
+     , SetRoute t (R FrontendRoute) (Client m)
+     , EventWriter t (NonEmpty FrontendEvent) (Client m)
      , HasFrontendState t s m
      , HasLoggedInAccount s
      )
@@ -48,7 +49,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
     elClass "div" "row" $
       elClass "div" "col-md-6 offset-md-3 col-xs-12" $ do
         elClass "h1" "text-xs-center" $ text "Your Settings"
-        prerender blank $ el "form" $ do
+        prerender_ blank $ el "form" $ do
           -- When this FRP network is built, we want to load the existing data
           pbE <- getPostBuild
           -- The only input is the JWT token that we load from the FrontendState
@@ -108,22 +109,22 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
                   <*> (Just <$> bioI ^. textArea_value)
                   <*> (Just <$> urlI ^. textInput_value)
 
-            -- Make the backend call when the submit button is clicked 
+            -- Make the backend call when the submit button is clicked
             -- and we have a valid UpdateUser
             updateResE <- getClient ^. apiUser . userUpdate . to (\f -> f
               tokenDyn
               (pure . pure . Namespace <$> updateDyn)
               updateE)
-            
+
             -- More throwing away errors
             let updateSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) updateResE
-            
+
             -- Once we have updated successfully, we redirect to the profile page.
             setRoute $
               (\newA ->
                 FrontendRoute_Profile :/ (Username $ Account.username newA, Nothing)
               ) <$> updateSuccessE
-          
+
           el "hr" blank
           -- Add a logout button that dispatches a logout event.
           logoutClick <- buttonClass "btn btn-outline-danger" $ text "Logout"
