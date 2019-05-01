@@ -50,7 +50,7 @@ register = noUserWidget $ elClass "div" "auth-page" $ do
           routeLink (FrontendRoute_Login :/ ()) $ text "Have an account?"
         elClass "ul" "error-messages" $
           blank
-        prerender blank $ el "form" $ do
+        prerender_ blank $ el "form" $ do
           usernameI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList

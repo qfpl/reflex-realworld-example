@@ -19,8 +19,6 @@ import           Data.GADT.Aeson          (FromJSONTag (..), GKey (..),
                                            ToJSONTag (..))
 import           Data.GADT.Compare.TH     (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH        (deriveGShow)
-import           Data.Text                (Text)
-
 
 import           Control.Monad.Trans      (lift)
 import           Obelisk.Route.Frontend   (RouteToUrl (..), Routed (..),
@@ -29,8 +27,10 @@ import           Reflex                   (EventWriterT)
 import           Reflex.Dom.Storage.Base  (StorageT (..))
 import           Reflex.Dom.Storage.Class (HasStorage (..))
 
+import RealWorld.Conduit.Api.User.Account (Token)
+
 data LocalStorageTag a where
-  LocalStorageJWT :: LocalStorageTag Text
+  LocalStorageJWT :: LocalStorageTag Token
 
 deriveGEq ''LocalStorageTag
 deriveGCompare ''LocalStorageTag

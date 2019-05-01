@@ -15,6 +15,7 @@ library
                , mtl
                , servant
                , servant-auth
+               , servant-auth-client
                , text
                , time
 

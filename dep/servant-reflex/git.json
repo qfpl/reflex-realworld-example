@@ -1,7 +1,7 @@
 {
-  "url": "https://github.com/benkolera/servant-reflex.git",
-  "rev": "491dd803ce880d28dbec42b7d0ee1e9733c466a3",
-  "date": "2019-04-12T16:12:53-05:00",
-  "sha256": "05s1sc5n5xrzp9iwf46dw94fhwmsl4jyr641w8dx7yd6ddy5clpp",
+  "url": "https://github.com/imalsogreg/servant-reflex.git",
+  "rev": "44595630e2d1597911ecb204e792d17db7e4a4ee",
+  "date": "2019-04-14T16:43:41-04:00",
+  "sha256": "009d8vr6mxfm9czywhb8haq8pwvnl9ha2cdmaagk1hp6q4yhfq1n",
   "fetchSubmodules": false
 }

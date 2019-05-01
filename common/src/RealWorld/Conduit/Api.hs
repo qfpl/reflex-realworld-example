@@ -11,12 +11,13 @@ import           RealWorld.Conduit.Api.User     (UserApi)
 import           RealWorld.Conduit.Api.Users    (UsersApi)
 import           RealWorld.Conduit.Api.Profile  (ProfileApi)
 
-type Api = "api"
-  :> (    ("users"     :> UsersApi)
-     :<|> ("user"      :> UserApi)
-     :<|> ("articles"  :> ArticlesApi)
-     :<|> ("profiles"  :> ProfileApi)
-     )
+type Api token = "api" :> TopLevelApi token
 
-api :: Proxy Api
+type TopLevelApi token
+     =    ("users"     :> UsersApi token)
+     :<|> ("user"      :> UserApi token)
+     :<|> ("articles"  :> ArticlesApi token)
+     :<|> ("profiles"  :> ProfileApi token)
+
+api :: Proxy (Api token)
 api = Proxy

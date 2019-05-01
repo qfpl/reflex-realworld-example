@@ -12,36 +12,30 @@
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 module RealWorld.Conduit.Client where
 
-import           Control.Lens
-import           Reflex
+import Control.Lens
+import Reflex
 
-import           Control.Applicative                          (liftA2)
-import           Data.Proxy                                   (Proxy (Proxy))
-import           Data.Text                                    (Text)
-import           Servant.API                                  ((:<|>) ((:<|>)),
-                                                               (:>), NoContent)
-import           Servant.Auth                                 (Auth, JWT)
-import           Servant.Common.Req                           (QParam, Req,
-                                                               headers)
-import           Servant.Reflex                               (BaseUrl (BaseFullUrl),
-                                                               Scheme (..),
-                                                               SupportsServantReflex)
-import           Servant.Reflex.Multi                         (ClientMulti, HasClientMulti (..),
-                                                               ReqResult,
-                                                               clientA)
+import Control.Applicative  (liftA2)
+import Data.Proxy           (Proxy (Proxy))
+import Data.Text            (Text)
+import Servant.API          ((:<|>) ((:<|>)), (:>), NoContent)
+import Servant.Auth         (Auth, JWT)
+import Servant.Common.Req   (QParam, Req, headers)
+import Servant.Reflex       (BaseUrl (BaseFullUrl), Scheme (..), SupportsServantReflex)
+import Servant.Reflex.Multi (ClientMulti, HasClientMulti (..), ReqResult, clientA)
 
-import           RealWorld.Conduit.Api                        (Api, api)
-import           RealWorld.Conduit.Api.Articles.Article       (Article)
-import           RealWorld.Conduit.Api.Articles.Articles      (Articles)
-import           RealWorld.Conduit.Api.Articles.Attributes    (CreateArticle)
-import           RealWorld.Conduit.Api.Articles.Comment       (Comment)
-import           RealWorld.Conduit.Api.Articles.CreateComment (CreateComment)
-import           RealWorld.Conduit.Api.Namespace              (Namespace)
-import           RealWorld.Conduit.Api.Profile                (Profile)
-import           RealWorld.Conduit.Api.User.Account           (Account)
-import           RealWorld.Conduit.Api.User.Update            (UpdateUser)
-import           RealWorld.Conduit.Api.Users.Credentials      (Credentials)
-import           RealWorld.Conduit.Api.Users.Registrant       (Registrant)
+import RealWorld.Conduit.Api                        (Api)
+import RealWorld.Conduit.Api.Articles.Article       (Article)
+import RealWorld.Conduit.Api.Articles.Articles      (Articles)
+import RealWorld.Conduit.Api.Articles.Attributes    (CreateArticle)
+import RealWorld.Conduit.Api.Articles.Comment       (Comment)
+import RealWorld.Conduit.Api.Articles.CreateComment (CreateComment)
+import RealWorld.Conduit.Api.Namespace              (Namespace)
+import RealWorld.Conduit.Api.Profile                (Profile)
+import RealWorld.Conduit.Api.User.Account           (Account, Token, getToken)
+import RealWorld.Conduit.Api.User.Update            (UpdateUser)
+import RealWorld.Conduit.Api.Users.Credentials      (Credentials)
+import RealWorld.Conduit.Api.Users.Registrant       (Registrant)
 
 data UsersClient f t m = UsersClient
   { _usersLogin
@@ -57,11 +51,11 @@ makeLenses ''UsersClient
 
 data UserClient f t m = UserClient
   { _userCurrent
-    :: Dynamic t (f (Maybe Text))
+    :: Dynamic t (f (Maybe Token))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "user" Account))))
   , _userUpdate
-    :: Dynamic t (f (Maybe Text))
+    :: Dynamic t (f (Maybe Token))
     -> Dynamic t (f (Either Text (Namespace "user" UpdateUser)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "user" Account))))
@@ -76,13 +70,13 @@ data ArticleClient f t m = ArticleClient
     :: Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comments" [Comment]))))
   , _articleCommentCreate
-    :: Dynamic t (f (Maybe Text))
+    :: Dynamic t (f (Maybe Token))
     -> Dynamic t (f (Either Text (Namespace "comment" CreateComment)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comment" Comment))))
   , _articleCommentDelete
     :: f (Dynamic t (Either Text Int))
-    -> Dynamic t (f (Maybe Text))
+    -> Dynamic t (f (Maybe Token))
     -> Event t ()
     -> m (Event t (f (ReqResult () NoContent)))
   }
@@ -95,11 +89,11 @@ data ArticlesClient f t m = ArticlesClient
     -> Dynamic t (f [Text])
     -> Dynamic t (f [Text])
     -> Dynamic t (f [Text])
-    -> Dynamic t (f (Maybe Text))
+    -> Dynamic t (f (Maybe Token))
     -> Event t ()
     -> m (Event t (f (ReqResult () Articles)))
   , _articlesCreate
-    :: Dynamic t (f (Maybe Text))
+    :: Dynamic t (f (Maybe Token))
     -> Dynamic t (f (Either Text (Namespace "article" CreateArticle)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "article" Article))))
@@ -108,7 +102,7 @@ data ArticlesClient f t m = ArticlesClient
 makeLenses ''ArticlesClient
 
 data ProfileClient f t m = ProfileClient
-  { _profileGet 
+  { _profileGet
     :: (f (Dynamic t (Either Text Text)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "profile" Profile))))
@@ -137,8 +131,8 @@ getClient = ApiClient { .. } :: ApiClient f t m
   where
     bp :: Dynamic t BaseUrl
     bp = constDyn $ baseUrl
-    c :: ClientMulti t m Api f ()
-    c = clientA api (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
+    c :: ClientMulti t m (Api Token) f ()
+    c = clientA (Proxy :: Proxy (Api Token))  (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
     apiUsersC :<|> apiUserC :<|> apiArticlesC :<|> apiProfileC = c
     _apiUsers = UsersClient { .. }
       where
@@ -153,21 +147,21 @@ getClient = ApiClient { .. } :: ApiClient f t m
           where
             _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC slug
     _apiProfile = ProfileClient { .. }
-      where 
+      where
         _profileGet = apiProfileC
 
--- TODO : Move this to servant Auth after some tidy up
+-- TODO : Make this not dodgy and put it in servant-reflex.
 instance (HasClientMulti t m api f tag, Reflex t, Applicative f)
-  => HasClientMulti t m (Auth '[JWT] a :> api) f tag where
-  type ClientMulti t m (Auth '[JWT] a :> api) f tag =
-    Dynamic t (f (Maybe Text)) -> ClientMulti t m api f tag
+  => HasClientMulti t m (Auth '[JWT] Token :> api) f tag where
+  type ClientMulti t m (Auth '[JWT] Token :> api) f tag =
+    Dynamic t (f (Maybe Token)) -> ClientMulti t m api f tag
 
   clientWithRouteMulti Proxy q f t reqs baseurl opts authdatas =
     clientWithRouteMulti (Proxy :: Proxy api) q f t reqs' baseurl opts
     where
-      req' :: (Maybe Text) -> Req t -> Req t
+      req' :: (Maybe Token) -> Req t -> Req t
       req' Nothing  r = r
       req' (Just a) r = r
-        { headers = ( "Authorization" , constDyn . pure $ tokenName <> " " <> a) : (headers r)
+        { headers = ( "Authorization" , constDyn . pure . getToken $ a ) : (headers r)
         }
       reqs' = liftA2 req' <$> authdatas <*> reqs

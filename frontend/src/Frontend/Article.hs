@@ -12,7 +12,6 @@ module Frontend.Article where
 import           Control.Lens
 import           Reflex.Dom.Core                              hiding (Element)
 
-import           Control.Monad.Fix                            (MonadFix)
 import           Control.Monad.IO.Class                       (MonadIO)
 import           Data.Default                                 (def)
 import           Data.Foldable                                (fold)
@@ -61,23 +60,12 @@ import           RealWorld.Conduit.Client                     (apiArticles, arti
                                                                getClient)
 
 article
-  :: forall t m s js
+  :: forall t m js
   .  ( DomBuilder t m
-     , PostBuild t m
-     , Routed t DocumentSlug m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
-     , MonadHold t m
-     , MonadFix m
-     , HasDocument m
-     , HasFrontendState t s m
-     , HasLoggedInAccount s
-     , PerformEvent t m
-     , TriggerEvent t m
      , Prerender js t m
      , Routed t DocumentSlug (Client m)
-     , RouteToUrl (R FrontendRoute) (Client m)
      , SetRoute t (R FrontendRoute) (Client m)
+     , RouteToUrl (R FrontendRoute) (Client m)
      )
   => m ()
 article = elClass "div" "article-page" $ prerender_ (text "Loading...") $ do
@@ -153,9 +141,6 @@ articleMeta art = elClass "div" "article-meta" $ do
 articleContent
   :: forall t m js
   .  ( DomBuilder t m
-     , MonadHold t m
-     , PerformEvent t m
-     , HasDocument m
      , Prerender js t m
      )
   => Dynamic t (Maybe Article.Article)
@@ -195,12 +180,9 @@ comments
   :: forall t m s js
   .  ( DomBuilder t m
      , SetRoute t (R FrontendRoute) m
-     , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) (Client m)
      , RouteToUrl (R FrontendRoute) (Client m)
      , PostBuild t m
-     , MonadHold t m
-     , MonadFix m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      , Prerender js t m

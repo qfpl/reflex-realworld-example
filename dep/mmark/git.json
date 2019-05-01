@@ -1,7 +1,7 @@
 {
-  "url": "https://github.com/benkolera/mmark.git",
-  "rev": "d2cec3b2dcc80b2e657544068d194ccce7e9d224",
-  "date": "2019-03-21T16:23:54+10:00",
-  "sha256": "07g1ajf19rafgb8hzqrw779xmzswyig46sxlc2x8g6jw5jmk70bh",
+  "url": "https://github.com/mmark-md/mmark.git",
+  "rev": "91fc7ac557367ab7350516d30d34fce1dcded7ba",
+  "date": "2019-04-30T11:08:56+02:00",
+  "sha256": "1sjcq2zr4zif42ayi6gcmwg5z74gdxga67bs1dkwzmmqcy4qmcig",
   "fetchSubmodules": false
 }

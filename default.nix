@@ -9,8 +9,11 @@ project ./. ({ pkgs, ... }: {
   ios.bundleName = "Obelisk Minimal Example";
   withHoogle = true;
   overrides = (self: super: {
+    entropy = self.callHackage "entropy" "0.4.1.3" {};
     reflex-dom-storage = (import ./dep/reflex-dom-storage) self super;
     servant-reflex = (import ./dep/servant-reflex) self super;
+    servant-snap = (import ./dep/servant-snap) self super;
+    servant-auth-snap = (import ./dep/servant-auth {}) self super;
     mmark = pkgs.haskell.lib.overrideCabal
      ((import ./dep/mmark) self super)
      (drv: {

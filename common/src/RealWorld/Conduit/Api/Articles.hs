@@ -15,17 +15,17 @@ import           RealWorld.Conduit.Api.Articles.Comment       (Comment)
 import           RealWorld.Conduit.Api.Articles.CreateComment (CreateComment)
 import           RealWorld.Conduit.Api.Namespace              (Namespace)
 
-type ArticlesApi =
+type ArticlesApi token =
   (
     QueryParam "limit" Integer
   :> QueryParam "offset" Integer
   :> QueryParams "tag" Text
   :> QueryParams "author" Text
   :> QueryParams "favorited" Text
-  :> Auth '[JWT] Int
+  :> Auth '[JWT] token
   :> Get '[JSON] Articles
   ) :<|> (
-    Auth '[JWT] Int
+    Auth '[JWT] token
   :> ReqBody '[JSON] (Namespace "article" CreateArticle)
   :> PostCreated '[JSON] (Namespace "article" Article)
   ) :<|> (
@@ -35,12 +35,12 @@ type ArticlesApi =
       :<|> "comments" :> (
         Get '[JSON] (Namespace "comments" [Comment])
         :<|> (
-          Auth '[JWT] Int
+          Auth '[JWT] token
           :> ReqBody '[JSON] (Namespace "comment" CreateComment)
           :> PostCreated '[JSON] (Namespace "comment" Comment)
         ) :<|> (
           Capture "commentId" Int
-          :> Auth '[JWT] Int
+          :> Auth '[JWT] token
           :>  DeleteNoContent '[JSON] NoContent)
         )
       )

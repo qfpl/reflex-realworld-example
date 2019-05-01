@@ -31,10 +31,6 @@ homePage
      , DomBuilder t m
      , RouteToUrl (R FrontendRoute) (Client m)
      , SetRoute t (R FrontendRoute) (Client m)
-     --, MonadSample t m
-     , MonadHold t m
-     , TriggerEvent t m
-     , PerformEvent t m
      , HasLoggedInAccount s
      , HasFrontendState t s (Client m)
      , Prerender js t m

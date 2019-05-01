@@ -48,7 +48,7 @@ editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-        prerender blank $ el "form" $
+        prerender_ blank $ el "form" $
           el "fieldset" $ do
             titleI <- elClass "fieldset" "form-group" $
               textInput $ def

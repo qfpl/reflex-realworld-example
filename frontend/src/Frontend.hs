@@ -82,11 +82,12 @@ htmlBody
   . ( ObeliskWidget js t (R FrontendRoute) m
     )
   => RoutedT t (R FrontendRoute) m ()
-htmlBody = mapRoutedT unravelAppState $ prerender_ blank $ do
-  jwtDyn <- askStorageTag LocalStorageJWT
-  pbE <- getPostBuild
-  currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
-  currentUserResUpdate currentUserE
+htmlBody = mapRoutedT unravelAppState $ do
+  prerender_ (pure ()) $ do
+    jwtDyn <- askStorageTag LocalStorageJWT
+    pbE <- getPostBuild
+    currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
+    currentUserResUpdate currentUserE
   stateDyn <- askFrontendState
   nav ((view loggedInAccount) <$> stateDyn)
   subRoute_ pages
@@ -94,7 +95,7 @@ htmlBody = mapRoutedT unravelAppState $ prerender_ blank $ do
   where
     currentUserResUpdate
       :: Event t (Identity (ReqResult () (Namespace "user" Account)))
-      -> RoutedAppState t m ()
+      -> RoutedAppState t (Client m) ()
     currentUserResUpdate =
       tellEvent
       . fmap ((:| []) . LogIn . unNamespace)
@@ -116,9 +117,7 @@ htmlBody = mapRoutedT unravelAppState $ prerender_ blank $ do
       LogIn a -> pdmInsert LocalStorageJWT (Account.token a)
 
     pages
-      :: ( ObeliskWidget js t (R FrontendRoute) m
-         )
-      => FrontendRoute a
+      :: FrontendRoute a
       -> RoutedT t a
          (EventWriterT t
            (NonEmpty FrontendEvent)

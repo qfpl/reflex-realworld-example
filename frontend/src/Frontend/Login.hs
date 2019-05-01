@@ -33,7 +33,6 @@ login
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
-     , EventWriter t (NonEmpty e) m
      , EventWriter t (NonEmpty e) (Client m)
      , AsFrontendEvent e
      , HasLoggedInAccount s
@@ -55,7 +54,7 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
           blank
 
         -- A form for two inputs
-        prerender blank $ el "form" $ do
+        prerender_ blank $ el "form" $ do
           emailI <- elClass "fieldset" "form-group" $
             textInput $ def
               & textInputConfig_attributes .~ constDyn (Map.fromList

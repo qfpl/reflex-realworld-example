@@ -3,20 +3,20 @@
 {-# LANGUAGE TypeOperators #-}
 module RealWorld.Conduit.Api.User where
 
-import           Servant.API                         ((:<|>), (:>), Get, JSON,
-                                                      ReqBody, Put)
-import           Servant.Auth                        (Auth, JWT)
+import           Servant.API                        ((:<|>), (:>), Get, JSON,
+                                                     Put, ReqBody)
+import           Servant.Auth                       (Auth, JWT)
 
-import           RealWorld.Conduit.Api.Namespace     (Namespace)
-import           RealWorld.Conduit.Api.User.Update   (UpdateUser)
+import           RealWorld.Conduit.Api.Namespace    (Namespace)
 import           RealWorld.Conduit.Api.User.Account (Account)
+import           RealWorld.Conduit.Api.User.Update  (UpdateUser)
 
-type UserApi =
+type UserApi token =
   (
-    Auth '[JWT] Int
+    Auth '[JWT] token
     :> Get '[JSON] (Namespace "user" Account)
   ) :<|> (
-    Auth '[JWT] Int
+    Auth '[JWT] token
     :> ReqBody '[JSON] (Namespace "user" UpdateUser)
     :> Put '[JSON] (Namespace "user" Account)
   )

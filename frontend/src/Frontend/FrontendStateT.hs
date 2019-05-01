@@ -30,7 +30,6 @@ import           Control.Monad.Trans.Control         (MonadTransControl (StT),
                                                       restoreT)
 import           Control.Monad.Trans.Reader          (ReaderT, ask, runReaderT)
 import           Data.Coerce                         (coerce)
-import           Data.Constraint                     (Dict (..))
 import           Data.Functor                        (void)
 import           Data.Monoid                         (Endo (Endo), First)
 import           Language.Javascript.JSaddle         (MonadJSM)
@@ -165,8 +164,6 @@ instance (Monad m, SetRoute t r m) => SetRoute t r (FrontendStateT t s m) where
 instance HasJSContext m => HasJSContext (FrontendStateT t s m) where
   type JSContextPhantom (FrontendStateT t s m) = JSContextPhantom m
   askJSContext = lift askJSContext
-
-
 
 instance (Prerender js t m, Monad m) => Prerender js t (FrontendStateT t s m) where
   type Client (FrontendStateT t s m) = FrontendStateT t s (Client m)

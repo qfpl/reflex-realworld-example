@@ -12,7 +12,7 @@ import           RealWorld.Conduit.Api.User.Account     (Account)
 import           RealWorld.Conduit.Api.Users.Credentials (Credentials)
 import           RealWorld.Conduit.Api.Users.Registrant  (Registrant)
 
-type UsersApi =
+type UsersApi token =
   ( "login"
     :> ReqBody '[JSON] (Namespace "user" Credentials)
     :> Post '[JSON] (Namespace "user" Account)

@@ -31,11 +31,8 @@ profile
      , PostBuild t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
-     , HasFrontendState t s m
      , HasLoggedInAccount s
      , Prerender js t m
-     , TriggerEvent t m
-     , PerformEvent t m
      , MonadHold t m
      , Monad (Client m)
      , HasFrontendState t s (Client m)
