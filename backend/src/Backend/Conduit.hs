@@ -3,18 +3,16 @@
 module Backend.Conduit where
 
 import           Crypto.JOSE.JWK       (JWK)
-import qualified Crypto.JOSE.JWK       as JWK
 import           Data.Aeson            (FromJSON, ToJSON)
-import           Data.Text             (Text)
 import           GHC.Generics          (Generic)
 import           RealWorld.Conduit.Api
 import           Servant               ((:<|>) ((:<|>)),
                                         Context ((:.), EmptyContext), Server,
-                                        serveSnapWithContext)
+                                        )
 import           Servant.Auth.Server   (CookieSettings, FromJWT, JWTSettings,
                                         ToJWT, defaultCookieSettings,
                                         defaultJWTSettings)
-import           Snap.Core             (Snap, path)
+import           Snap.Core             (Snap)
 
 data Claim = Claim { id :: Int } deriving Generic
 instance ToJSON Claim
@@ -22,17 +20,8 @@ instance FromJSON Claim
 instance ToJWT Claim
 instance FromJWT Claim
 
-data Environment = Environment
-  { jwtSettings :: JWTSettings
-  }
-
-envToContext :: Environment -> Context '[CookieSettings, JWTSettings]
-envToContext = undefined
-
-mkEnv :: JWK -> Environment
-mkEnv jwk = Environment
-  { jwtSettings = defaultJWTSettings jwk
-  }
+mkContext :: JWK -> Context '[CookieSettings, JWTSettings]
+mkContext jwk = defaultCookieSettings :. defaultJWTSettings jwk :. EmptyContext
 
 server :: Server (TopLevelApi Claim) '[] Snap
 server = usersServer :<|> userServer :<|> articlesServer :<|> profilesServer

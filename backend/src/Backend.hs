@@ -10,29 +10,35 @@
 {-# LANGUAGE TypeFamilies       #-}
 module Backend where
 
-import           Control.Monad.IO.Class   (liftIO)
+import qualified Crypto.JOSE              as HOSE
+import qualified Crypto.JOSE.Types        as HOSE
+import           Data.Maybe               (fromJust)
 import           Data.Proxy               (Proxy (..))
-import           GHC.Generics             (Generic)
+import           Data.Text.Encoding       (encodeUtf8)
 import           Obelisk.Backend
 import           Obelisk.ExecutableConfig (get)
 import           Obelisk.Route
-import           Servant                  ((:<|>) ((:<|>)),
-                                           Context ((:.), EmptyContext), Server,
-                                           serveSnapWithContext)
-import           Servant.Auth.Server      (CookieSettings, FromJWT, JWTSettings,
-                                           ToJWT, defaultCookieSettings,
-                                           defaultJWTSettings)
+import           Servant                  (serveSnapWithContext)
 import           SetCookieOrphan          ()
 import           Snap.Core                (path)
 
-import           Backend.Conduit          (Claim, server, envToContext)
-import           Common.Route
-import           RealWorld.Conduit.Api
+import Backend.Conduit       (Claim, mkContext, server)
+import Common.Route
+import RealWorld.Conduit.Api
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
   { _backend_run = \serve -> do
-      let context = envToContext _
+      pgConnStrMay <- get "config/backend/pgConnStr"
+      jwtKeyMay    <- get "config/backend/jwtKey"
+      let jwtMay   =
+            (  HOSE.fromKeyMaterial
+             . HOSE.OctKeyMaterial
+             . HOSE.OctKeyParameters
+             . HOSE.Base64Octets
+             . encodeUtf8
+            ) <$> jwtKeyMay
+      let context = mkContext (fromJust jwtMay)
       serve $ \case
         (BackendRoute_Missing :/ ()) -> return ()
         (BackendRoute_Api     :/ ()) -> path "api" $
