@@ -1,29 +1,22 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
 module Frontend.Login where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Control.Monad.IO.Class                  (MonadIO)
-import           Data.Functor.Identity                   (runIdentity)
-import           Data.List.NonEmpty                      (NonEmpty)
-import qualified Data.Map                                as Map
-import           Obelisk.Route.Frontend                  (pattern (:/), R,
-                                                          RouteToUrl, SetRoute,
-                                                          routeLink)
-import           Servant.Common.Req                      (reqSuccess)
+import           Control.Monad.IO.Class (MonadIO)
+import           Data.Functor.Identity  (runIdentity)
+import           Data.List.NonEmpty     (NonEmpty)
+import qualified Data.Map               as Map
+import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
+import           Servant.Common.Req     (reqSuccess)
 
-import           Common.Route                            (FrontendRoute (..))
-import           Frontend.FrontendStateT
-import           Frontend.Utils                          (buttonClass)
-import           RealWorld.Conduit.Api.Namespace         (Namespace (Namespace),
-                                                          unNamespace)
-import           RealWorld.Conduit.Api.Users.Credentials (Credentials (Credentials))
-import           RealWorld.Conduit.Client
+import Common.Conduit.Api.Namespace         (Namespace (Namespace), unNamespace)
+import Common.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import Common.Route                         (FrontendRoute (..))
+import Frontend.Conduit.Client
+import Frontend.FrontendStateT
+import Frontend.Utils                       (buttonClass)
 
 login
   :: ( DomBuilder t m

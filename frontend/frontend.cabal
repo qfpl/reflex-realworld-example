@@ -51,7 +51,7 @@ library
     , Frontend.Register
     , Frontend.Settings
     , Frontend.Utils
-    , RealWorld.Conduit.Client
+    , Frontend.Conduit.Client
 
   ghc-options: -Wall
   if impl(ghcjs)

@@ -1,29 +1,22 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables                                                                     #-}
 module Frontend.HomePage where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Data.Functor                            (void)
-import           Obelisk.Route                           (pattern (:/), R)
-import           Obelisk.Route.Frontend                  (RouteToUrl, SetRoute)
-import           Servant.Common.Req                      (QParam (QNone),
-                                                          reqSuccess)
+import Data.Functor           (void)
+import Obelisk.Route          (pattern (:/), R)
+import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
+import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
-import           Common.Route                            (FrontendRoute (..))
-import           Frontend.ArticlePreview                 (articlesPreview)
-import           Frontend.FrontendStateT
-import           Frontend.Utils                          (routeLinkClass)
-import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
-import           RealWorld.Conduit.Api.User.Account     (token)
-import           RealWorld.Conduit.Client                (apiArticles,
-                                                          articlesList,
-                                                          getClient)
+import Common.Conduit.Api.Articles.Articles (Articles (..))
+import Common.Conduit.Api.User.Account      (token)
+import Common.Route                         (FrontendRoute (..))
+import Frontend.ArticlePreview              (articlesPreview)
+import Frontend.Conduit.Client              (apiArticles, articlesList, getClient)
+import Frontend.FrontendStateT
+import Frontend.Utils                       (routeLinkClass)
 
 homePage
   :: forall t m s js

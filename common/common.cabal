@@ -21,19 +21,19 @@ library
 
   exposed-modules:
     Common.Route
-    RealWorld.Conduit.Api
-    RealWorld.Conduit.Api.Attribute
-    RealWorld.Conduit.Api.Namespace
-    RealWorld.Conduit.Api.Articles
-    RealWorld.Conduit.Api.Articles.Articles
-    RealWorld.Conduit.Api.Articles.Comment
-    RealWorld.Conduit.Api.Articles.Article
-    RealWorld.Conduit.Api.Articles.Attributes
-    RealWorld.Conduit.Api.Articles.CreateComment
-    RealWorld.Conduit.Api.User
-    RealWorld.Conduit.Api.User.Update
-    RealWorld.Conduit.Api.User.Account
-    RealWorld.Conduit.Api.User.Profile
-    RealWorld.Conduit.Api.Users
-    RealWorld.Conduit.Api.Users.Credentials
-    RealWorld.Conduit.Api.Users.Registrant
+    Common.Conduit.Api
+    Common.Conduit.Api.Attribute
+    Common.Conduit.Api.Namespace
+    Common.Conduit.Api.Articles
+    Common.Conduit.Api.Articles.Articles
+    Common.Conduit.Api.Articles.Comment
+    Common.Conduit.Api.Articles.Article
+    Common.Conduit.Api.Articles.Attributes
+    Common.Conduit.Api.Articles.CreateComment
+    Common.Conduit.Api.User
+    Common.Conduit.Api.User.Update
+    Common.Conduit.Api.User.Account
+    Common.Conduit.Api.User.Profile
+    Common.Conduit.Api.Users
+    Common.Conduit.Api.Users.Credentials
+    Common.Conduit.Api.Users.Registrant

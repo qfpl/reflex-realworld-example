@@ -1,31 +1,24 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
 module Frontend.ArticlePreview where
 
 
-import           Reflex.Dom.Core
+import Reflex.Dom.Core
 
-import           Control.Monad.Fix                       (MonadFix)
-import           Data.Functor                            (void)
-import qualified Data.Map                                as Map
-import           Data.Text                               (Text)
-import           Obelisk.Route                           (pattern (:/), R)
-import           Obelisk.Route.Frontend                  (RouteToUrl, SetRoute)
+import           Control.Monad.Fix      (MonadFix)
+import           Data.Functor           (void)
+import qualified Data.Map               as Map
+import           Data.Text              (Text)
+import           Obelisk.Route          (pattern (:/), R)
+import           Obelisk.Route.Frontend (RouteToUrl, SetRoute)
 
-import           Common.Route                            (DocumentSlug (..),
-                                                          FrontendRoute (..),
-                                                          Username (..))
-import           Frontend.Utils                          (imgUrl, routeLinkDyn,
-                                                          routeLinkDynClass)
+import Common.Route   (DocumentSlug (..), FrontendRoute (..), Username (..))
+import Frontend.Utils (imgUrl, routeLinkDyn, routeLinkDynClass)
 
-import           RealWorld.Conduit.Api.Articles.Article  (Article)
-import qualified RealWorld.Conduit.Api.Articles.Article  as Article
-import           RealWorld.Conduit.Api.Articles.Articles (Articles)
-import qualified RealWorld.Conduit.Api.Articles.Articles as Articles
-import qualified RealWorld.Conduit.Api.Profile           as Profile
+import           Common.Conduit.Api.Articles.Article  (Article)
+import qualified Common.Conduit.Api.Articles.Article  as Article
+import           Common.Conduit.Api.Articles.Articles (Articles)
+import qualified Common.Conduit.Api.Articles.Articles as Articles
+import qualified Common.Conduit.Api.Profile           as Profile
 
 articlesPreview
   :: ( DomBuilder t m

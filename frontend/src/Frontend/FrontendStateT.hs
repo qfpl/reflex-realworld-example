@@ -1,47 +1,31 @@
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE PatternSynonyms            #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE FunctionalDependencies     #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase, MultiParamTypeClasses, PatternSynonyms, RankNTypes, ScopedTypeVariables          #-}
+{-# LANGUAGE StandaloneDeriving, TemplateHaskell, TypeFamilies, UndecidableInstances                      #-}
 module Frontend.FrontendStateT where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Control.Monad.Fix                   (MonadFix)
-import           Control.Monad.IO.Class              (MonadIO)
-import           Control.Monad.Primitive             (PrimMonad (PrimState),
-                                                      primitive)
-import           Control.Monad.Ref                   (MonadRef (Ref), newRef,
-                                                      readRef, writeRef)
-import           Control.Monad.Trans                 (MonadTrans, lift)
-import           Control.Monad.Trans.Control         (MonadTransControl (StT),
-                                                      defaultLiftWith,
-                                                      defaultRestoreT, liftWith,
-                                                      restoreT)
-import           Control.Monad.Trans.Reader          (ReaderT, ask, runReaderT)
-import           Data.Coerce                         (coerce)
-import           Data.Functor                        (void)
-import           Data.Monoid                         (Endo (Endo), First)
-import           Language.Javascript.JSaddle         (MonadJSM)
-import           Obelisk.Route.Frontend              (pattern (:/), R,
-                                                      RouteToUrl, RoutedT,
-                                                      SetRoute, askRouteToUrl,
-                                                      modifyRoute, setRoute)
-import           Reflex.Dom.Storage.Base             (StorageT)
-import           Reflex.Host.Class                   (MonadReflexCreateTrigger)
+import Control.Monad.Fix           (MonadFix)
+import Control.Monad.IO.Class      (MonadIO)
+import Control.Monad.Primitive     (PrimMonad (PrimState), primitive)
+import Control.Monad.Ref           (MonadRef (Ref), newRef, readRef, writeRef)
+import Control.Monad.Trans         (MonadTrans, lift)
+import Control.Monad.Trans.Control (MonadTransControl (StT), defaultLiftWith, defaultRestoreT, liftWith,
+                                    restoreT)
+import Control.Monad.Trans.Reader  (ReaderT, ask, runReaderT)
+import Data.Coerce                 (coerce)
+import Data.Functor                (void)
+import Data.Monoid                 (Endo (Endo), First)
+import Language.Javascript.JSaddle (MonadJSM)
+import Obelisk.Route.Frontend      (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, askRouteToUrl,
+                                    modifyRoute, setRoute)
+import Reflex.Dom.Storage.Base     (StorageT)
+import Reflex.Host.Class           (MonadReflexCreateTrigger)
 
-import           Common.Route                        (FrontendRoute (FrontendRoute_Home))
-import           RealWorld.Conduit.Api.User.Account (Account)
+import Common.Conduit.Api.User.Account (Account)
+import Common.Route                    (FrontendRoute (FrontendRoute_Home))
+
 
 data FrontendEvent = LogOut | LogIn Account
 makeClassyPrisms ''FrontendEvent

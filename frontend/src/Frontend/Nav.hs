@@ -1,23 +1,18 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies                                                                            #-}
 module Frontend.Nav where
 
-import           Reflex.Dom.Core
+import Reflex.Dom.Core
 
-import           Data.Bool                           (bool)
-import           Data.Functor                        (void)
-import           Obelisk.Route                       (pattern (:/), R)
-import           Obelisk.Route.Frontend              (RouteToUrl, Routed,
-                                                      SetRoute, askRoute)
+import Data.Bool              (bool)
+import Data.Functor           (void)
+import Obelisk.Route          (pattern (:/), R)
+import Obelisk.Route.Frontend (RouteToUrl, Routed, SetRoute, askRoute)
 
-import           Common.Route                        (FrontendRoute (..), Username(..))
-import           Frontend.Utils                      (routeLinkDynClass)
-import           RealWorld.Conduit.Api.User.Account (Account)
-import qualified RealWorld.Conduit.Api.User.Account as Account
+import           Common.Conduit.Api.User.Account (Account)
+import qualified Common.Conduit.Api.User.Account as Account
+import           Common.Route                    (FrontendRoute (..), Username (..))
+import           Frontend.Utils                  (routeLinkDynClass)
 
 nav
   :: ( DomBuilder t m
