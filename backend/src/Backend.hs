@@ -20,7 +20,7 @@ import           Obelisk.ExecutableConfig (get)
 import           Obelisk.Route
 import           Servant                  (serveSnapWithContext)
 import           SetCookieOrphan          ()
-import           Snap.Core                (path)
+import           Snap.Core                (dir)
 
 import Backend.Conduit       (Claim, mkContext, server)
 import Common.Route
@@ -41,7 +41,6 @@ backend = Backend
       let context = mkContext (fromJust jwtMay)
       serve $ \case
         (BackendRoute_Missing :/ ()) -> return ()
-        (BackendRoute_Api     :/ ()) -> path "api" $
-          serveSnapWithContext (Proxy :: Proxy (TopLevelApi Claim)) context server
+        (BackendRoute_Api     :/ _) -> serveSnapWithContext api context server
   , _backend_routeEncoder = backendRouteEncoder
   }

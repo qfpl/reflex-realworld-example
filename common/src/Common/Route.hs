@@ -19,7 +19,7 @@ import           Obelisk.Route
 import           Prelude                       hiding (id, (.))
 
 import           Control.Categorical.Bifunctor (bimap)
-import           Control.Category              ((.))
+import           Control.Category              ((.), id)
 import           Data.Functor.Identity         (Identity)
 import           Data.Functor.Sum              (Sum (InL, InR))
 import           Data.Text                     (Text)
@@ -34,7 +34,7 @@ makeWrapped ''Username
 data BackendRoute :: * -> * where
   -- | Used to handle unparseable routes.
   BackendRoute_Missing :: BackendRoute ()
-  BackendRoute_Api :: BackendRoute ()
+  BackendRoute_Api :: BackendRoute PageName
 
 data FrontendRoute :: * -> * where
   FrontendRoute_Home :: FrontendRoute ()
@@ -55,7 +55,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
   pathComponentEncoder $ \case
     InL backendRoute -> case backendRoute of
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_Api -> PathSegment "api" $ unitEncoder mempty
+      BackendRoute_Api -> PathSegment "api" $ id
     InR obeliskRoute -> obeliskRouteSegment obeliskRoute $ \case
       -- The encoder given to PathEnd determines how to parse query parameters,
       -- in this example, we have none, so we insist on it.

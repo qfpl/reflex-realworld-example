@@ -14,7 +14,7 @@ import           Servant.Auth.Server   (CookieSettings, FromJWT, JWTSettings,
                                         defaultJWTSettings)
 import           Snap.Core             (Snap)
 
-data Claim = Claim { id :: Int } deriving Generic
+data Claim = Claim { id :: Int } deriving (Show, Generic)
 instance ToJSON Claim
 instance FromJSON Claim
 instance ToJWT Claim
@@ -23,7 +23,7 @@ instance FromJWT Claim
 mkContext :: JWK -> Context '[CookieSettings, JWTSettings]
 mkContext jwk = defaultCookieSettings :. defaultJWTSettings jwk :. EmptyContext
 
-server :: Server (TopLevelApi Claim) '[] Snap
+server :: Server (Api Claim) '[] Snap
 server = usersServer :<|> userServer :<|> articlesServer :<|> profilesServer
   where
     usersServer = loginServer :<|> registerServer
@@ -32,7 +32,7 @@ server = usersServer :<|> userServer :<|> articlesServer :<|> profilesServer
         registerServer _ = pure undefined
     userServer = currentUserServer :<|> updateUserServer
       where
-        currentUserServer = undefined
+        currentUserServer _ = pure undefined
         updateUserServer = undefined
     articlesServer = listArticlesServer :<|> getArticleServer
       where
