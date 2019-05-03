@@ -1,63 +1,44 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MonoLocalBinds        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE RecursiveDo           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MonoLocalBinds, MultiParamTypeClasses, OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms, RecursiveDo, ScopedTypeVariables                                      #-}
 
 module Frontend.Article where
 
-import           Control.Lens
-import           Reflex.Dom.Core                              hiding (Element)
+import Control.Lens
+import Reflex.Dom.Core hiding (Element)
 
-import           Control.Monad.IO.Class                       (MonadIO)
-import           Data.Default                                 (def)
-import           Data.Foldable                                (fold)
-import           Data.Functor                                 (void)
-import qualified Data.Map                                     as Map
-import           Data.Maybe                                   (fromMaybe)
-import           Data.Monoid                                  (Endo (Endo),
-                                                               appEndo)
-import           Data.Text                                    (Text)
-import qualified Data.Text.Lazy                               as TL
-import           GHCJS.DOM.Document                               (createElement)
-import           GHCJS.DOM.Element                                (setInnerHTML)
-import           GHCJS.DOM.Types                                  (liftJSM)
-import qualified Lucid                                        as L
-import           Obelisk.Route.Frontend                       (pattern (:/), R,
-                                                               RouteToUrl,
-                                                               Routed, SetRoute,
-                                                               askRoute,
-                                                               routeLink)
-import           Servant.Common.Req                           (reqSuccess)
-import qualified Text.MMark                                   as MMark
+import           Control.Monad.IO.Class (MonadIO)
+import           Data.Default           (def)
+import           Data.Foldable          (fold)
+import           Data.Functor           (void)
+import qualified Data.Map               as Map
+import           Data.Maybe             (fromMaybe)
+import           Data.Monoid            (Endo (Endo), appEndo)
+import           Data.Text              (Text)
+import qualified Data.Text.Lazy         as TL
+import           GHCJS.DOM.Document     (createElement)
+import           GHCJS.DOM.Element      (setInnerHTML)
+import           GHCJS.DOM.Types        (liftJSM)
+import qualified Lucid                  as L
+import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, Routed, SetRoute, askRoute, routeLink)
+import           Servant.Common.Req     (reqSuccess)
+import qualified Text.MMark             as MMark
 
 
-import           Common.Route                                 (DocumentSlug (..),
-                                                               FrontendRoute (..),
-                                                               Username (..))
-import           Frontend.ArticlePreview                      (profileImage,
-                                                               profileRoute)
+import qualified Common.Conduit.Api.Articles.Article       as Article
+import qualified Common.Conduit.Api.Articles.Comment       as Comment
+import qualified Common.Conduit.Api.Articles.CreateComment as CreateComment
+import           Common.Conduit.Api.Namespace              (Namespace (..), unNamespace)
+import qualified Common.Conduit.Api.Profile                as Profile
+import qualified Common.Conduit.Api.User.Account           as Account
+import           Common.Route                              (DocumentSlug (..), FrontendRoute (..),
+                                                            Username (..))
+import           Frontend.ArticlePreview                   (profileImage, profileRoute)
+import           Frontend.Conduit.Client                   (apiArticles, articleCommentCreate,
+                                                            articleCommentDelete, articleComments, articleGet,
+                                                            articlesArticle, getClient)
 import           Frontend.FrontendStateT
-import           Frontend.Utils                               (buttonClass,
-                                                               routeLinkClass,
-                                                               routeLinkDynClass,
-                                                               showText)
-import qualified RealWorld.Conduit.Api.Articles.Article       as Article
-import qualified RealWorld.Conduit.Api.Articles.Comment       as Comment
-import qualified RealWorld.Conduit.Api.Articles.CreateComment as CreateComment
-import           RealWorld.Conduit.Api.Namespace              (Namespace (..),
-                                                               unNamespace)
-import qualified RealWorld.Conduit.Api.User.Account           as Account
-import qualified RealWorld.Conduit.Api.Profile                as Profile
-import           RealWorld.Conduit.Client                     (apiArticles, articleCommentCreate,
-                                                               articleCommentDelete,
-                                                               articleComments,
-                                                               articleGet,
-                                                               articlesArticle,
-                                                               getClient)
+import           Frontend.Utils                            (buttonClass, routeLinkClass, routeLinkDynClass,
+                                                            showText)
 
 article
   :: forall t m js

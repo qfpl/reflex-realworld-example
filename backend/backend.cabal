@@ -8,10 +8,13 @@ library
   if impl(ghcjs)
     buildable: False
   build-depends: base
+               , beam-core
+               , beam-postgres
                , common
                , frontend
                , obelisk-backend
                , obelisk-route
+               , postgresql-simple
                , servant-snap
                , servant-auth-snap
   exposed-modules:

@@ -1,11 +1,8 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables #-}
 module Frontend.Utils where
 
-import           Control.Lens           hiding (element)
-import           Reflex.Dom.Core
+import Control.Lens    hiding (element)
+import Reflex.Dom.Core
 
 import           Control.Monad          (mfilter)
 import           Control.Monad.Trans    (lift)
@@ -14,8 +11,7 @@ import           Data.Maybe             (fromMaybe)
 import           Data.Proxy             (Proxy (Proxy))
 import           Data.Text              (Text)
 import qualified Data.Text              as T
-import           Obelisk.Route.Frontend (RouteToUrl, RoutedT, SetRoute,
-                                         askRoute, askRouteToUrl, runRoutedT,
+import           Obelisk.Route.Frontend (RouteToUrl, RoutedT, SetRoute, askRoute, askRouteToUrl, runRoutedT,
                                          setRoute)
 
 showText :: Show s => s -> Text

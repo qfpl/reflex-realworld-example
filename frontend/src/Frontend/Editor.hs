@@ -1,34 +1,24 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables                                                                     #-}
 module Frontend.Editor where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Control.Monad.IO.Class                    (MonadIO)
-import qualified Data.Map                                  as Map
-import qualified Data.Set                                  as Set
-import           Obelisk.Route.Frontend                    (R, SetRoute,
-                                                            setRoute, pattern (:/))
-import           Servant.Common.Req                        (reqSuccess)
+import           Control.Monad.IO.Class (MonadIO)
+import qualified Data.Map               as Map
+import qualified Data.Set               as Set
+import           Obelisk.Route.Frontend (pattern (:/), R, SetRoute, setRoute)
+import           Servant.Common.Req     (reqSuccess)
 
-import           Common.Route                              (DocumentSlug(..),
-                                                            FrontendRoute(..))
+import qualified Common.Conduit.Api.Articles.Article    as Article
+import           Common.Conduit.Api.Articles.Attributes (ArticleAttributes (..), CreateArticle)
+import           Common.Conduit.Api.Namespace           (Namespace (Namespace), unNamespace)
+import qualified Common.Conduit.Api.User.Account        as Account
+import           Common.Route                           (DocumentSlug (..), FrontendRoute (..))
+import           Frontend.Conduit.Client                (apiArticles, articlesCreate, getClient)
 import           Frontend.FrontendStateT
-import           Frontend.Utils                            (buttonClass)
-import qualified RealWorld.Conduit.Api.Articles.Article    as Article
-import           RealWorld.Conduit.Api.Articles.Attributes (ArticleAttributes (..),
-                                                            CreateArticle)
-import           RealWorld.Conduit.Api.Namespace           (Namespace (Namespace),
-                                                            unNamespace)
-import qualified RealWorld.Conduit.Api.User.Account       as Account
-import           RealWorld.Conduit.Client                  (apiArticles,
-                                                            articlesCreate,
-                                                            getClient)
+import           Frontend.Utils                         (buttonClass)
 
 editor
   :: forall t m js s

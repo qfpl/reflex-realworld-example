@@ -1,33 +1,23 @@
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE DeriveGeneric, FlexibleInstances, GADTs, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TypeFamilies  #-}
+{-# LANGUAGE UndecidableInstances                                                                       #-}
 {-# OPTIONS_GHC -fno-warn-orphans       #-}
 module Frontend.LocalStorageKey where
 
-import           Data.Aeson               (FromJSON (..), ToJSON (..))
-import           Data.Dependent.Map       (Some (This))
-import           Data.Functor.Identity    (Identity (Identity))
-import           Data.GADT.Aeson          (FromJSONTag (..), GKey (..),
-                                           ToJSONTag (..))
-import           Data.GADT.Compare.TH     (deriveGCompare, deriveGEq)
-import           Data.GADT.Show.TH        (deriveGShow)
+import Data.Aeson            (FromJSON (..), ToJSON (..))
+import Data.Dependent.Map    (Some (This))
+import Data.Functor.Identity (Identity (Identity))
+import Data.GADT.Aeson       (FromJSONTag (..), GKey (..), ToJSONTag (..))
+import Data.GADT.Compare.TH  (deriveGCompare, deriveGEq)
+import Data.GADT.Show.TH     (deriveGShow)
 
-import           Control.Monad.Trans      (lift)
-import           Obelisk.Route.Frontend   (RouteToUrl (..), Routed (..),
-                                           RoutedT, SetRoute (..))
-import           Reflex                   (EventWriterT)
-import           Reflex.Dom.Storage.Base  (StorageT (..))
-import           Reflex.Dom.Storage.Class (HasStorage (..))
+import Control.Monad.Trans      (lift)
+import Obelisk.Route.Frontend   (RouteToUrl (..), Routed (..), RoutedT, SetRoute (..))
+import Reflex                   (EventWriterT)
+import Reflex.Dom.Storage.Base  (StorageT (..))
+import Reflex.Dom.Storage.Class (HasStorage (..))
 
-import RealWorld.Conduit.Api.User.Account (Token)
+import Common.Conduit.Api.User.Account (Token)
 
 data LocalStorageTag a where
   LocalStorageJWT :: LocalStorageTag Token

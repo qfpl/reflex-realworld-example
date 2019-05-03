@@ -1,33 +1,28 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables, TypeApplications                                                   #-}
 
 module Frontend.Settings where
 
-import           Control.Lens
-import           Reflex.Dom.Core
+import Control.Lens
+import Reflex.Dom.Core
 
-import           Control.Monad                      (mfilter)
-import           Control.Monad.IO.Class             (MonadIO)
-import           Data.List.NonEmpty                 (NonEmpty)
-import qualified Data.Map                           as Map
-import           Data.Maybe                         (fromMaybe)
-import qualified Data.Text                          as Text
-import           Obelisk.Route.Frontend             (R, SetRoute, setRoute, pattern (:/))
-import           Servant.Common.Req                 (reqSuccess)
+import           Control.Monad          (mfilter)
+import           Control.Monad.IO.Class (MonadIO)
+import           Data.List.NonEmpty     (NonEmpty)
+import qualified Data.Map               as Map
+import           Data.Maybe             (fromMaybe)
+import qualified Data.Text              as Text
+import           Obelisk.Route.Frontend (pattern (:/), R, SetRoute, setRoute)
+import           Servant.Common.Req     (reqSuccess)
 
-import           Common.Route                       (FrontendRoute(..), Username(..))
+import           Common.Conduit.Api.Namespace    (Namespace (Namespace), unNamespace)
+import qualified Common.Conduit.Api.User.Account as Account
+import           Common.Conduit.Api.User.Update  (UpdateUser (UpdateUser))
+import           Common.Route                    (FrontendRoute (..), Username (..))
+import           Frontend.Conduit.Client         (getClient)
+import           Frontend.Conduit.Client         (apiUser, userCurrent, userUpdate)
 import           Frontend.FrontendStateT
-import           Frontend.Utils                     (buttonClass)
-import           RealWorld.Conduit.Api.Namespace    (Namespace(Namespace), unNamespace)
-import qualified RealWorld.Conduit.Api.User.Account as Account
-import           RealWorld.Conduit.Api.User.Update  (UpdateUser (UpdateUser))
-import           RealWorld.Conduit.Client           (getClient)
-import           RealWorld.Conduit.Client           (apiUser, userCurrent, userUpdate)
+import           Frontend.Utils                  (buttonClass)
 
 settings
   :: ( DomBuilder t m

@@ -1,13 +1,5 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE EmptyCase          #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE PatternSynonyms    #-}
-{-# LANGUAGE RankNTypes         #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE DataKinds, DeriveGeneric, EmptyCase, FlexibleContexts, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms, RankNTypes, StandaloneDeriving, TypeFamilies, TypeOperators         #-}
 module Backend where
 
 import qualified Crypto.JOSE              as HOSE
@@ -22,15 +14,16 @@ import           Servant                  (serveSnapWithContext)
 import           SetCookieOrphan          ()
 import           Snap.Core                (dir)
 
-import Backend.Conduit       (Claim, mkContext, server)
-import Common.Route
-import RealWorld.Conduit.Api
+import Backend.Conduit    (Claim, ConduitServerEnv (..), mkContext, runConduitServerM, server)
+import Common.Conduit.Api (api)
+import Common.Route       (BackendRoute (..), FrontendRoute, backendRouteEncoder)
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
   { _backend_run = \serve -> do
       pgConnStrMay <- get "config/backend/pgConnStr"
       jwtKeyMay    <- get "config/backend/jwtKey"
+      let env      = ConduitServerEnv
       let jwtMay   =
             (  HOSE.fromKeyMaterial
              . HOSE.OctKeyMaterial

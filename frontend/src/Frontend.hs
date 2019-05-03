@@ -49,10 +49,10 @@ import           Frontend.Register                   (register)
 import           Frontend.Settings                   (settings)
 import           Frontend.Utils                      (pathSegmentSubRoute,
                                                       routeLinkClass)
-import           RealWorld.Conduit.Api.Namespace     (Namespace, unNamespace)
-import           RealWorld.Conduit.Api.User.Account (Account)
-import qualified RealWorld.Conduit.Api.User.Account as Account
-import           RealWorld.Conduit.Client            (apiUser, getClient,
+import           Common.Conduit.Api.Namespace     (Namespace, unNamespace)
+import           Common.Conduit.Api.User.Account (Account)
+import qualified Common.Conduit.Api.User.Account as Account
+import           Frontend.Conduit.Client            (apiUser, getClient,
                                                       userCurrent)
 
 mapStorageT :: (forall x. m x -> n x) -> StorageT t k m a -> StorageT t k n a

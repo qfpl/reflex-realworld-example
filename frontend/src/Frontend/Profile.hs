@@ -1,9 +1,5 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE FlexibleContexts, GADTs, LambdaCase, MultiParamTypeClasses, OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms                                                               #-}
 module Frontend.Profile where
 
 import Control.Lens
@@ -14,17 +10,16 @@ import Data.Functor           (void)
 import Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, askRoute)
 import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
-import           Common.Route                            (FrontendRoute (..), ProfileRoute (..),
-                                                          Username (..))
-import           Frontend.ArticlePreview                 (articlesPreview, profileImage)
+import           Common.Conduit.Api.Articles.Articles (Articles (..))
+import           Common.Conduit.Api.Namespace         (unNamespace)
+import qualified Common.Conduit.Api.Profile           as Profile
+import qualified Common.Conduit.Api.User.Account      as Account
+import           Common.Route                         (FrontendRoute (..), ProfileRoute (..), Username (..))
+import           Frontend.ArticlePreview              (articlesPreview, profileImage)
+import           Frontend.Conduit.Client              (apiArticles, apiProfile, articlesList, getClient,
+                                                       profileGet)
 import           Frontend.FrontendStateT
-import           Frontend.Utils                          (buttonClass, routeLinkDynClass)
-import           RealWorld.Conduit.Api.Articles.Articles (Articles (..))
-import           RealWorld.Conduit.Api.Namespace         (unNamespace)
-import qualified RealWorld.Conduit.Api.Profile           as Profile
-import qualified RealWorld.Conduit.Api.User.Account      as Account
-import           RealWorld.Conduit.Client                (apiArticles, apiProfile, articlesList, getClient,
-                                                          profileGet)
+import           Frontend.Utils                       (buttonClass, routeLinkDynClass)
 
 profile
   :: ( DomBuilder t m
