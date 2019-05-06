@@ -5,6 +5,7 @@ module Frontend.Profile where
 import Control.Lens
 import Reflex.Dom.Core
 
+import Control.Monad.Fix      (MonadFix)
 import Data.Bool              (bool)
 import Data.Functor           (void)
 import Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, askRoute)
@@ -26,12 +27,10 @@ profile
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      , HasLoggedInAccount s
+     , HasFrontendState t s m
      , Prerender js t m
      , MonadHold t m
-     , Monad (Client m)
-     , HasFrontendState t s (Client m)
-     , RouteToUrl (R FrontendRoute) (Client m)
-     , SetRoute t (R FrontendRoute) (Client m)
+     , MonadFix m
      )
   => Dynamic t Username
   -> RoutedT t (Maybe (R ProfileRoute)) m ()
@@ -40,10 +39,11 @@ profile usernameDyn =
   elClass "div" "user-info" $
     elClass "div" "container" $
       elClass "div" "row" $
-        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender_ (text "Loading") $ do
+        elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
           pbE <- getPostBuild
+          tokDyn <- reviewFrontendState loggedInToken
           loadResE <- Client.getProfile
-            (error "TODO: Fix prerendering")
+            tokDyn
             (pure . unUsername <$> usernameDyn)
             (leftmost [pbE,void . updated $ usernameDyn])
 
@@ -61,12 +61,12 @@ profile usernameDyn =
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-        elClass "div" "articles-toggle" $
+        elClass "div" "articles-toggle" $ do
           elClass "ul" "nav nav-pills outline-active" $ do
             rDyn <- askRoute
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
-        prerender_ (text "Loading...") $ do
+
           tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
           artE <- Client.listArticles

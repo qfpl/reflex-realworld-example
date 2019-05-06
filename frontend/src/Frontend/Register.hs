@@ -28,7 +28,7 @@ register
      , TriggerEvent t m
      , PerformEvent t m
      , MonadIO (Performable m)
-     , EventWriter t (NonEmpty e) (Client m)
+     , EventWriter t (NonEmpty e) m
      , AsFrontendEvent e
      , HasFrontendState t s m
      , HasLoggedInAccount s
@@ -43,31 +43,31 @@ register = noUserWidget $ elClass "div" "auth-page" $ do
           routeLink (FrontendRoute_Login :/ ()) $ text "Have an account?"
         elClass "ul" "error-messages" $
           blank
-        prerender_ blank $ el "form" $ do
+        el "form" $ do
           usernameI <- elClass "fieldset" "form-group" $
-            textInput $ def
-              & textInputConfig_attributes .~ constDyn (Map.fromList
+            inputElement $ def
+              & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Your name")
-                ])
+                ]
           emailI <- elClass "fieldset" "form-group" $
-            textInput $ def
-              & textInputConfig_attributes .~ constDyn (Map.fromList
+            inputElement $ def
+              & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Email")
-                ])
+                ]
           passI <- elClass "fieldset" "form-group" $
-            textInput $ def
-              & textInputConfig_inputType  .~ "password"
-              & textInputConfig_attributes .~ constDyn (Map.fromList
+            inputElement $ def
+              & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
-                ])
+                , ("type","password")
+                ]
           submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
           let registrant = Registrant
-                <$> usernameI ^. textInput_value
-                <*> emailI ^. textInput_value
-                <*> passI ^. textInput_value
+                <$> usernameI ^. to _inputElement_value
+                <*> emailI ^. to _inputElement_value
+                <*> passI ^. to _inputElement_value
           resE <- Client.register (pure . Namespace <$> registrant) submitE
           tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe reqSuccess $ resE)
           pure ()

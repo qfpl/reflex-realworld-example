@@ -9,9 +9,9 @@ import Data.Functor           (void)
 import Obelisk.Route          (pattern (:/), R)
 import Obelisk.Route.Frontend (RouteToUrl, Routed, SetRoute, askRoute)
 
-import           Common.Conduit.Api.User.Account (Account)
 import qualified Common.Conduit.Api.User.Account as Account
 import           Common.Route                    (FrontendRoute (..), Username (..))
+import           Frontend.FrontendStateT
 import           Frontend.Utils                  (routeLinkDynClass)
 
 nav
@@ -21,11 +21,13 @@ nav
      , Routed t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
+     , HasFrontendState t s m
+     , HasLoggedInAccount s
      )
-  => Dynamic t (Maybe Account)
-  -> m ()
-nav loggedIn = do
+  => m ()
+nav = do
   rDyn <- askRoute
+  loggedIn <- viewFrontendState loggedInAccount
   elClass "nav" "navbar navbar-light" $
     elClass "div" "container" $ do
       routeLinkDynClass "navbar-brand" (constDyn $ FrontendRoute_Home :/ ()) $ text "conduit"

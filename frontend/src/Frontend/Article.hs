@@ -39,22 +39,25 @@ import           Frontend.Utils                            (buttonClass, routeLi
                                                             showText)
 
 article
-  :: forall t m js
+  :: forall t m js s
   .  ( DomBuilder t m
      , Prerender js t m
-     , Routed t DocumentSlug (Client m)
-     , SetRoute t (R FrontendRoute) (Client m)
-     , RouteToUrl (R FrontendRoute) (Client m)
+     , Routed t DocumentSlug m
+     , SetRoute t (R FrontendRoute) m
+     , RouteToUrl (R FrontendRoute) m
+     , PostBuild t m
+     , MonadHold t m
+     , HasFrontendState t s m
+     , HasLoggedInAccount s
      )
   => m ()
-article = elClass "div" "article-page" $ prerender_ (text "Loading...") $ do
+article = elClass "div" "article-page" $ do
   -- We ask our route for the document slug and make the backend call on load
   slugDyn <- askRoute
   pbE <- getPostBuild
-  loadResE <- Client.getArticle
-     (error "TODO: Get user into here after prerender tidy")
-     (pure . unDocumentSlug <$> slugDyn)
-     pbE
+  tokDyn <- reviewFrontendState loggedInToken
+
+  loadResE <- Client.getArticle tokDyn (pure . unDocumentSlug <$> slugDyn) pbE
 
   -- While we are loading, we dont have an article
   -- The types are honest about this.
@@ -125,8 +128,7 @@ articleContent
      )
   => Dynamic t (Maybe Article.Article)
   -> m ()
-articleContent articleDyn = prerender_ (text "Loading...") $ do
-  -- Just call pandoc over the article body like it is no big deal
+articleContent articleDyn = prerender_ (text "Rendering Document...") $ do
   let htmlDyn = (fromMaybe "" . fmap (markDownToHtml5 . Article.body)) <$> articleDyn
   elClass "div" "row article-content" $ do
     d <- askDocument

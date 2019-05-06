@@ -69,10 +69,9 @@ htmlBody = mapRoutedT unravelAppState $ do
   prerender_ (pure ()) $ do
     jwtDyn <- askStorageTag LocalStorageJWT
     pbE <- getPostBuild
-    currentUserE <- Client.getCurrentUser jwtDyn (leftmost [pbE, void $ updated jwtDyn])
+    currentUserE <- Client.getCurrentUser jwtDyn pbE
     currentUserResUpdate currentUserE
-  stateDyn <- askFrontendState
-  nav ((view loggedInAccount) <$> stateDyn)
+  nav
   subRoute_ pages
   footer
   where

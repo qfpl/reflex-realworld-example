@@ -5,6 +5,7 @@ module Frontend.HomePage where
 import Control.Lens
 import Reflex.Dom.Core
 
+import Control.Monad.Fix      (MonadFix)
 import Data.Functor           (void)
 import Obelisk.Route          (pattern (:/), R)
 import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
@@ -22,14 +23,16 @@ homePage
   :: forall t m s js
   . ( PostBuild t m
      , DomBuilder t m
-     , RouteToUrl (R FrontendRoute) (Client m)
-     , SetRoute t (R FrontendRoute) (Client m)
+     , RouteToUrl (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) m
+     , MonadHold t m
+     , MonadFix m
      , HasLoggedInAccount s
-     , HasFrontendState t s (Client m)
+     , HasFrontendState t s m
      , Prerender js t m
      )
   => m ()
-homePage = prerender_ (text "Loading...") $ elClass "div" "home-page" $ do
+homePage = elClass "div" "home-page" $ do
   tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
   pbE <- getPostBuild
   artE <- Client.listArticles

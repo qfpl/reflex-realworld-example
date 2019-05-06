@@ -23,8 +23,9 @@ import Obelisk.Route.Frontend      (pattern (:/), R, RouteToUrl, RoutedT, SetRou
 import Reflex.Dom.Storage.Base     (StorageT)
 import Reflex.Host.Class           (MonadReflexCreateTrigger)
 
-import Common.Conduit.Api.User.Account (Account)
-import Common.Route                    (FrontendRoute (FrontendRoute_Home))
+import           Common.Conduit.Api.User.Account (Account, Token)
+import qualified Common.Conduit.Api.User.Account as Account
+import           Common.Route                    (FrontendRoute (FrontendRoute_Home))
 
 
 data FrontendEvent = LogOut | LogIn Account
@@ -48,6 +49,9 @@ updateFrontendData :: FrontendEvent -> Endo FrontendData
 updateFrontendData e = Endo $ case e of
   LogOut  -> frontendDataLoggedInAccount .~ Nothing
   LogIn a -> frontendDataLoggedInAccount ?~ a
+
+loggedInToken :: (Monoid f, HasLoggedInAccount t) => Getting f t Token
+loggedInToken = loggedInAccount . _Just . to Account.token
 
 newtype FrontendStateT t s m a = FrontendStateT
   { unFrontendStateT :: ReaderT (Dynamic t s) m a }

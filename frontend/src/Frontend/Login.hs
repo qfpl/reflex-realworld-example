@@ -5,7 +5,6 @@ import Control.Lens
 import Reflex.Dom.Core
 
 import           Control.Monad.IO.Class (MonadIO)
-import           Data.Functor.Identity  (runIdentity)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map               as Map
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
@@ -26,7 +25,7 @@ login
      , SetRoute t (R FrontendRoute) m
      , TriggerEvent t m
      , PerformEvent t m
-     , EventWriter t (NonEmpty e) (Client m)
+     , EventWriter t (NonEmpty e) m
      , AsFrontendEvent e
      , HasLoggedInAccount s
      , HasFrontendState t s m
@@ -47,19 +46,19 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
           blank
 
         -- A form for two inputs
-        prerender_ blank $ el "form" $ do
+        el "form" $ do
           emailI <- elClass "fieldset" "form-group" $
-            textInput $ def
-              & textInputConfig_attributes .~ constDyn (Map.fromList
+            inputElement $ def
+              & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Email")
                 ])
           passI <- elClass "fieldset" "form-group" $
-            textInput $ def
-              & textInputConfig_inputType  .~ "password"
-              & textInputConfig_attributes .~ constDyn (Map.fromList
+            inputElement $ def
+              & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ (Map.fromList
                 [ ("class","form-control form-control-lg")
                 , ("placeholder","Password")
+                , ("type","password")
                 ])
           -- And a submit button. Not really a submit element. Should fix this
           submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Sign in"
@@ -67,8 +66,8 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
           -- We take the Dynamics from the two inputs and make a Dynamic t Credentials
           -- Dynamic has an applicative instance.
           let credentials = Credentials
-                <$> emailI ^. textInput_value
-                <*> passI ^. textInput_value
+                <$> emailI ^. to _inputElement_value
+                <*> passI ^. to _inputElement_value
 
           -- Do a backend call with the Dynamic t Credentials and the Submit Click
           resE <- Client.login

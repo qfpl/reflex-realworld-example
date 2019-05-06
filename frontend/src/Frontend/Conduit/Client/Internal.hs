@@ -154,6 +154,6 @@ instance (HasClientMulti t m api f tag, Reflex t, Applicative f)
       req' :: (Maybe Token) -> Req t -> Req t
       req' Nothing  r = r
       req' (Just a) r = r
-        { headers = ( "Authorization" , constDyn . pure . getToken $ a ) : (headers r)
+        { headers = ( "Authorization" , constDyn . pure . ("Bearer " <>) . getToken $ a ) : (headers r)
         }
       reqs' = liftA2 req' <$> authdatas <*> reqs

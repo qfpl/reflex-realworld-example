@@ -54,52 +54,52 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
           let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
           el "fieldset" $ do
             urlI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","URL of profile picture")
-                  ]))
+                  ]
                 -- Note that we set the form val from AJAX returned data
-                & textInputConfig_setValue .~ (fromMaybe "" . Account.image <$> loadSuccessE)
+                & inputElementConfig_setValue .~ (fromMaybe "" . Account.image <$> loadSuccessE)
             usernameI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","Your name")
-                  ]))
-                & textInputConfig_setValue .~ (Account.username <$> loadSuccessE)
+                  ]
+                & inputElementConfig_setValue .~ (Account.username <$> loadSuccessE)
             bioI <- elClass "fieldset" "form-group" $
-              textArea $ def
-                & textAreaConfig_attributes .~ (constDyn (Map.fromList
+              textAreaElement $ def
+                & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","Short bio about you")
                   ,("rows","8")
-                  ]))
-                & textAreaConfig_setValue .~ (Account.bio <$> loadSuccessE)
+                  ]
+                & textAreaElementConfig_setValue .~ (Account.bio <$> loadSuccessE)
 
             emailI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_inputType .~ "email"
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","Email")
-                  ]))
-                & textInputConfig_setValue .~ (Account.email <$> loadSuccessE)
+                  ,("type","input")
+                  ]
+                & inputElementConfig_setValue .~ (Account.email <$> loadSuccessE)
             passwordI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_inputType .~ "password"
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","Password")
-                  ]))
+                  ,("type","password")
+                  ]
             updateE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Update Settings"
             -- Here we dont want to update the password if it was left blank
             let updateDyn = UpdateUser
-                  <$> (mfilter (not . Text.null) . Just <$> passwordI ^. textInput_value)
-                  <*> (Just <$> emailI ^. textInput_value)
-                  <*> (Just <$> usernameI ^. textInput_value)
-                  <*> (Just <$> bioI ^. textArea_value)
-                  <*> (Just <$> urlI ^. textInput_value)
+                  <$> (mfilter (not . Text.null) . Just <$> passwordI ^. to _inputElement_value)
+                  <*> (Just <$> emailI ^. to _inputElement_value)
+                  <*> (Just <$> usernameI ^. to _inputElement_value)
+                  <*> (Just <$> bioI ^. to _textAreaElement_value)
+                  <*> (Just <$> urlI ^. to _inputElement_value)
 
             -- Make the backend call when the submit button is clicked
             -- and we have a valid UpdateUser

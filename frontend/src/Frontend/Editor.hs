@@ -26,7 +26,6 @@ editor
      , PostBuild t m
      , Prerender js t m
      , SetRoute t (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) (Client m)
      , HasFrontendState t s m
      , HasLoggedInAccount s
      , TriggerEvent t m
@@ -38,32 +37,32 @@ editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-        prerender_ blank $ el "form" $
+        el "form" $
           el "fieldset" $ do
             titleI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ (Map.fromList
                   [("class","form-control")
                   ,("placeholder","Article Title")
-                  ]))
+                  ])
             descI <- elClass "fieldset" "form-group" $
-              textInput $ def
-                & textInputConfig_attributes .~ (constDyn (Map.fromList
+              inputElement $ def
+                & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ (Map.fromList
                   [("class","form-control")
                   ,("placeholder","What's this article about?")
-                  ]))
+                  ])
             bodyI <- elClass "fieldset" "form-group" $
-              textArea $ def
-                & textAreaConfig_attributes .~ (constDyn (Map.fromList
+              textAreaElement $ def
+                & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ (Map.fromList
                   [("class","form-control")
                   ,("placeholder","Write your article (in markdown)")
                   ,("rows","8")
-                  ]))
+                  ])
             publishE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Publish Article"
             let createArticle :: Dynamic t CreateArticle = ArticleAttributes
-                  <$> titleI ^. textInput_value
-                  <*> descI  ^. textInput_value
-                  <*> bodyI  ^. textArea_value
+                  <$> titleI ^. to _inputElement_value
+                  <*> descI  ^. to _inputElement_value
+                  <*> bodyI  ^. to _textAreaElement_value
                   <*> constDyn Set.empty
             resE <- Client.createArticle
               (constDyn . Just $ Account.token acct)
