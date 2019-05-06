@@ -1,13 +1,11 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, StandaloneDeriving #-}
 module Common.Conduit.Api.Articles.Comment where
 
-import           Data.Aeson                         (FromJSON (..), ToJSON (..))
-import           Data.Text                          (Text)
-import           Data.Time                          (UTCTime)
-import           GHC.Generics                       (Generic)
-import           Common.Conduit.Api.Profile      (Profile)
+import Common.Conduit.Api.Profiles (Profile)
+import Data.Aeson                  (FromJSON (..), ToJSON (..))
+import Data.Text                   (Text)
+import Data.Time                   (UTCTime)
+import GHC.Generics                (Generic)
 
 data Comment = Comment
   { id        :: Int

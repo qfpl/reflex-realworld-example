@@ -1,13 +1,16 @@
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE StandaloneDeriving #-}
-module Common.Conduit.Api.Profile where
+{-# LANGUAGE TypeOperators      #-}
+module Common.Conduit.Api.Profiles.Profile
+  ( Profile(..)
+  ) where
 
 import           Data.Aeson   (FromJSON, ToJSON)
 import           Data.Text    (Text)
 import           GHC.Generics (Generic)
 
-type ProfileApi = Capture "username" Text :> Get '[JSON] Profile
 
 data Profile = Profile
   { id        :: Int

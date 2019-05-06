@@ -14,6 +14,9 @@ data Articles = Articles
   , articlesCount :: Int
   }
 
+fromList :: [Article] -> Articles
+fromList = Articles <$> id <*> length
+
 deriving instance Generic Articles
 deriving instance ToJSON Articles
 deriving instance FromJSON Articles

@@ -12,7 +12,7 @@ import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
 import           Common.Conduit.Api.Namespace         (unNamespace)
-import qualified Common.Conduit.Api.Profile           as Profile
+import qualified Common.Conduit.Api.Profiles.Profile  as Profile
 import qualified Common.Conduit.Api.User.Account      as Account
 import           Common.Route                         (FrontendRoute (..), ProfileRoute (..), Username (..))
 import           Frontend.ArticlePreview              (articlesPreview, profileImage)
@@ -42,9 +42,9 @@ profile usernameDyn =
     elClass "div" "container" $
       elClass "div" "row" $
         elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender_ (text "Loading") $ do
-          --tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
           loadResE <- getClient ^. apiProfile . profileGet . to (\f -> f
+            (error "TODO: Fix prerendering")
             (Identity $ pure . unUsername <$> usernameDyn)
             (leftmost [pbE,void . updated $ usernameDyn])
             )
@@ -71,12 +71,12 @@ profile usernameDyn =
           tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
           artE <- getClient ^. apiArticles . articlesList . to (\f -> f
+            (Identity <$> tokDyn)
             (constDyn . Identity $ QNone)
             (constDyn . Identity $ QNone)
             (constDyn . Identity $ [])
             (Identity . pure . unUsername <$> usernameDyn)
             (constDyn . Identity $ [])
-            (Identity <$> tokDyn)
             (leftmost [pbE,void $ updated tokDyn])
             )
           artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)

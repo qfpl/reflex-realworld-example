@@ -28,12 +28,12 @@ import qualified Common.Conduit.Api.Articles.Article       as Article
 import qualified Common.Conduit.Api.Articles.Comment       as Comment
 import qualified Common.Conduit.Api.Articles.CreateComment as CreateComment
 import           Common.Conduit.Api.Namespace              (Namespace (..), unNamespace)
-import qualified Common.Conduit.Api.Profile                as Profile
+import qualified Common.Conduit.Api.Profiles.Profile       as Profile
 import qualified Common.Conduit.Api.User.Account           as Account
 import           Common.Route                              (DocumentSlug (..), FrontendRoute (..),
                                                             Username (..))
 import           Frontend.ArticlePreview                   (profileImage, profileRoute)
-import           Frontend.Conduit.Client                   (apiArticles, articleCommentCreate,
+import           Frontend.Conduit.Client                   (ArticleClient, apiArticles, articleCommentCreate,
                                                             articleCommentDelete, articleComments, articleGet,
                                                             articlesArticle, getClient)
 import           Frontend.FrontendStateT
@@ -54,6 +54,7 @@ article = elClass "div" "article-page" $ prerender_ (text "Loading...") $ do
   slugDyn <- askRoute
   pbE <- getPostBuild
   loadResE <- getClient ^. apiArticles . articlesArticle
+     . to ($ error "TODO: Get user into here after prerender tidy")
      . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleGet
      . to ($ pbE)
 
@@ -176,9 +177,11 @@ comments
 comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
   -- Load the comments when this widget is built
   pbE <- getPostBuild
-  loadResE <- getClient ^. apiArticles . articlesArticle
-     . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleComments
-     . to ($ pbE)
+  let articleClient :: ArticleClient Identity t (Client m) = getClient ^. apiArticles . articlesArticle
+        . to ($ (pure . pure . pure $ Account.token acct))
+        . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn))
+
+  loadResE <-  articleClient ^. articleComments . to ($ pbE)
   let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) loadResE
   -- Turn it into a map so that we have IDs for each comment
   let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
@@ -205,9 +208,7 @@ comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
           <$> commentI ^.textArea_value
     postE <- elClass "div" "card-footer" $ do
       buttonClass "btn btn-sm btn-primary" $ text "Post Comment"
-    submitResE <- getClient ^. apiArticles . articlesArticle
-      . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleCommentCreate
-      . to (\f -> f (constDyn . pure . pure $ Account.token acct) createCommentDyn postE)
+    submitResE <- articleClient ^. articleCommentCreate . to (\f -> f createCommentDyn postE)
     let newE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) submitResE
     pure newE
 
@@ -231,8 +232,7 @@ comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
         deleteClickE <- elClass "span" "mod-options" $ do
           (trashElt,_) <- elClass' "i" "ion-trash-a" blank
           pure $ domEvent Click trashElt
-        deleteResE <- getClient ^. apiArticles . articlesArticle
-          . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleCommentDelete
-          . to (\f -> f (pure . constDyn . pure $ cId)  (constDyn . pure . pure $ Account.token acct) deleteClickE)
+        deleteResE <- articleClient ^. articleCommentDelete
+          . to (\f -> f (pure . constDyn . pure $ cId) deleteClickE)
         pure $ fmapMaybe (void . reqSuccess . runIdentity) deleteResE
   pure ()

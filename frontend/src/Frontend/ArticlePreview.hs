@@ -18,7 +18,7 @@ import           Common.Conduit.Api.Articles.Article  (Article)
 import qualified Common.Conduit.Api.Articles.Article  as Article
 import           Common.Conduit.Api.Articles.Articles (Articles)
 import qualified Common.Conduit.Api.Articles.Articles as Articles
-import qualified Common.Conduit.Api.Profile           as Profile
+import qualified Common.Conduit.Api.Profiles.Profile  as Profile
 
 articlesPreview
   :: ( DomBuilder t m

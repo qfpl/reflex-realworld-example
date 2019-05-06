@@ -20,5 +20,8 @@ data Account = Account
 deriving instance ToJSON Account
 deriving instance FromJSON Account
 
-deriving instance ToJSON Token
-deriving instance FromJSON Token
+instance ToJSON Token where
+  toJSON = toJSON . getToken
+
+instance FromJSON Token where
+  parseJSON = fmap Token . parseJSON

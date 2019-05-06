@@ -15,8 +15,11 @@ library
                , obelisk-backend
                , obelisk-route
                , postgresql-simple
-               , servant-snap
+               , resource-pool
+               , scrypt
                , servant-auth-snap
+               , servant-snap
+               , validation
   exposed-modules:
     Backend
   ghc-options: -Wall

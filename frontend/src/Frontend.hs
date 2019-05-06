@@ -148,4 +148,4 @@ footer = el "footer" $ elClass "div" "container" $ do
     text ". Code & designed licensed under MIT."
 
 frontend :: Frontend (R FrontendRoute)
-frontend = Frontend htmlHead htmlBody
+frontend = Frontend (prerender_ htmlHead htmlHead) htmlBody

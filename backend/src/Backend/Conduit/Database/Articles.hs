@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, NamedFieldPuns, OverloadedStrings, RecordWildCards #-}
 module Backend.Conduit.Database.Articles
   ( all
   , create
@@ -9,20 +9,28 @@ module Backend.Conduit.Database.Articles
   , unsafeFind
   , unfavorite
   , update
-  , attributesForUpdate
-  , attributesForInsert
+  , validateAttributesForUpdate
+  , validateAttributesForInsert
   ) where
 
-import Prelude hiding (all, find)
+import Prelude hiding (all)
 
 import           Control.Lens                    (view, (^.), _1, _2, _3, _4, _5, _6)
+import           Control.Monad                   (unless)
 import           Control.Monad.Error.Class       (MonadError, throwError)
+import           Control.Monad.IO.Class          (MonadIO, liftIO)
 import           Control.Monad.Reader.Class      (MonadReader, ask)
 import           Control.Monad.Trans.Control     (MonadBaseControl)
 import qualified Data.Char                       as Char
+import           Data.Foldable                   (for_, traverse_)
+import           Data.Functor                    (void)
+import           Data.Functor.Compose            (Compose (..))
+import           Data.Functor.Identity           (Identity)
 import qualified Data.Map                        as Map
-import           Data.Maybe                      (catMaybes)
+import           Data.Maybe                      (catMaybes, fromMaybe)
+import           Data.Set                        (Set)
 import qualified Data.Set                        as Set
+import           Data.Text                       (Text)
 import qualified Data.Text                       as Text
 import           Data.Time                       (UTCTime, getCurrentTime)
 import           Data.Validation                 (Validation (Failure, Success), validation)
@@ -55,15 +63,15 @@ import           Backend.Conduit.Database.Users               (selectProfiles)
 import           Backend.Conduit.Database.Users.User          (PrimaryKey (unUserId), User, UserId,
                                                                UserT (username))
 import qualified Backend.Conduit.Database.Users.User          as User
-import           Common.Conduit.Articles.Article              (Article (Article))
-import qualified Common.Conduit.Articles.Article              as Article
-import           Common.Conduit.Articles.Article.Attributes   (Attributes (..))
-import           Common.Conduit.Users.Profile                 (Profile (Profile))
-import           Common.Conduit.Validation                    (ValidationErrors, requiredText)
+import           Backend.Conduit.Validation                   (ValidationErrors, requiredText)
+import           Common.Conduit.Api.Articles.Article          (Article (Article))
+import qualified Common.Conduit.Api.Articles.Article          as Article
+import           Common.Conduit.Api.Articles.Attributes       (ArticleAttributes (..))
+import           Common.Conduit.Api.Profiles.Profile          (Profile (Profile))
 
 insertArticle
-  :: UserId -> UTCTime -> Attributes Identity -> PgInsertReturning Persisted.Article
-insertArticle authorId currentTime Attributes { title, description, body }
+  :: UserId -> UTCTime -> ArticleAttributes Identity -> PgInsertReturning Persisted.Article
+insertArticle authorId currentTime ArticleAttributes { title, description, body }
   = insertReturning
     (conduitArticles conduitDb)
     (insertExpressions
@@ -89,7 +97,7 @@ create
      , MonadBaseControl IO m
      )
   => UserId
-  -> Attributes Identity
+  -> ArticleAttributes Identity
   -> m Article
 create authorId attributes = do
   conn <- ask
@@ -127,8 +135,8 @@ unsafeFind currentUserId slug = do
     runSelect conn (select (selectArticle currentUserId slug)) singleRow
 
 updateArticle
-  :: UTCTime -> Text -> Attributes Maybe -> PgUpdateReturning Persisted.Article
-updateArticle currentTime currentSlug Attributes { title, description, body }
+  :: UTCTime -> Text -> ArticleAttributes Maybe -> PgUpdateReturning Persisted.Article
+updateArticle currentTime currentSlug ArticleAttributes { title, description, body }
   = updateReturning
     (conduitArticles conduitDb)
     (\article -> catMaybes
@@ -150,7 +158,7 @@ update
      )
   => UserId
   -> Text
-  -> Attributes Maybe
+  -> ArticleAttributes Maybe
   -> m Article
 update authorId currentSlug attributes = do
   conn <- ask
@@ -447,24 +455,21 @@ makeTitle
 makeTitle title =
   requiredText "title" title *> titleGeneratingUniqueSlug title
 
-attributesForInsert
+validateAttributesForInsert
   :: ( MonadIO m
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
      )
-  => Text
-  -> Text
-  -> Text
-  -> Set Text
-  -> m (Attributes Identity)
-attributesForInsert title description body tags =
+  => ArticleAttributes Identity
+  -> m (ArticleAttributes Identity)
+validateAttributesForInsert ArticleAttributes {..} =
   (validation throwError pure =<<) . getCompose $
-  Attributes
+  ArticleAttributes
     <$> makeTitle title
     <*> requiredText "description" description
     <*> requiredText "body" body
-    <*> pure tags
+    <*> pure tagList
 
 makeUpdateTitle
   :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
@@ -475,22 +480,19 @@ makeUpdateTitle current title
   | generateSlug title == current = requiredText "title" title
   | otherwise = makeTitle title
 
-attributesForUpdate
+validateAttributesForUpdate
   :: ( MonadIO m
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
      )
   => Article
-  -> Maybe Text
-  -> Maybe Text
-  -> Maybe Text
-  -> Maybe (Set Text)
-  -> m (Attributes Maybe)
-attributesForUpdate current title description body tags =
+  -> ArticleAttributes Maybe
+  -> m (ArticleAttributes Maybe)
+validateAttributesForUpdate current ArticleAttributes {..} =
   (validation throwError pure =<<) . getCompose $
-  Attributes
+  ArticleAttributes
     <$> traverse (makeUpdateTitle (Article.slug current)) title
     <*> traverse (requiredText "description") description
     <*> traverse (requiredText "body") body
-    <*> pure tags
+    <*> pure tagList

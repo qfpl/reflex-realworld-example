@@ -7,14 +7,14 @@ module Frontend.Conduit.Client where
 import Control.Lens
 import Reflex
 
-import Control.Applicative  (liftA2)
-import Data.Proxy           (Proxy (Proxy))
-import Data.Text            (Text)
-import Servant.API          ((:<|>) ((:<|>)), (:>), NoContent)
-import Servant.Auth         (Auth, JWT)
-import Servant.Common.Req   (QParam, Req, headers)
-import Servant.Reflex       (BaseUrl (BaseFullUrl), Scheme (..), SupportsServantReflex)
-import Servant.Reflex.Multi (ClientMulti, HasClientMulti (..), ReqResult, clientA)
+import Control.Applicative    (liftA2)
+import Data.Proxy             (Proxy (Proxy))
+import Data.Text              (Text)
+import Servant.API            ((:<|>) ((:<|>)), (:>), NoContent)
+import Servant.Auth           (Auth, JWT)
+import Servant.Common.Req     (QParam, Req, headers)
+import Servant.Reflex         (BaseUrl (BasePath), SupportsServantReflex)
+import Servant.Reflex.Multi   (ClientMulti, HasClientMulti (..), ReqResult, clientA)
 
 import Common.Conduit.Api                        (Api)
 import Common.Conduit.Api.Articles.Article       (Article)
@@ -23,7 +23,7 @@ import Common.Conduit.Api.Articles.Attributes    (CreateArticle)
 import Common.Conduit.Api.Articles.Comment       (Comment)
 import Common.Conduit.Api.Articles.CreateComment (CreateComment)
 import Common.Conduit.Api.Namespace              (Namespace)
-import Common.Conduit.Api.Profile                (Profile)
+import Common.Conduit.Api.Profiles               (Profile)
 import Common.Conduit.Api.User.Account           (Account, Token, getToken)
 import Common.Conduit.Api.User.Update            (UpdateUser)
 import Common.Conduit.Api.Users.Credentials      (Credentials)
@@ -62,13 +62,11 @@ data ArticleClient f t m = ArticleClient
     :: Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comments" [Comment]))))
   , _articleCommentCreate
-    :: Dynamic t (f (Maybe Token))
-    -> Dynamic t (f (Either Text (Namespace "comment" CreateComment)))
+    :: Dynamic t (f (Either Text (Namespace "comment" CreateComment)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comment" Comment))))
   , _articleCommentDelete
     :: f (Dynamic t (Either Text Int))
-    -> Dynamic t (f (Maybe Token))
     -> Event t ()
     -> m (Event t (f (ReqResult () NoContent)))
   }
@@ -76,12 +74,12 @@ makeLenses ''ArticleClient
 
 data ArticlesClient f t m = ArticlesClient
   { _articlesList
-    :: Dynamic t (f (QParam Integer))
+    :: Dynamic t (f (Maybe Token))
+    -> Dynamic t (f (QParam Integer))
     -> Dynamic t (f (QParam Integer))
     -> Dynamic t (f [Text])
     -> Dynamic t (f [Text])
     -> Dynamic t (f [Text])
-    -> Dynamic t (f (Maybe Token))
     -> Event t ()
     -> m (Event t (f (ReqResult () Articles)))
   , _articlesCreate
@@ -89,13 +87,14 @@ data ArticlesClient f t m = ArticlesClient
     -> Dynamic t (f (Either Text (Namespace "article" CreateArticle)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "article" Article))))
-  , _articlesArticle :: f (Dynamic t (Either Text Text)) -> ArticleClient f t m
+  , _articlesArticle :: Dynamic t (f (Maybe Token)) -> f (Dynamic t (Either Text Text)) -> ArticleClient f t m
   }
 makeLenses ''ArticlesClient
 
 data ProfileClient f t m = ProfileClient
   { _profileGet
-    :: (f (Dynamic t (Either Text Text)))
+    :: Dynamic t (f (Maybe Token))
+    -> (f (Dynamic t (Either Text Text)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "profile" Profile))))
   }
@@ -109,38 +108,32 @@ data ApiClient f t m = ApiClient
   }
 makeLenses ''ApiClient
 
--- Don't try this yet. We aren't exactly to spec properly yet
-baseUrl :: BaseUrl
-tokenName :: Text
---(baseUrl, tokenName) = (BaseFullUrl Https "conduit.productionready.io" 443 "/", "Token")
-(baseUrl, tokenName) = (BaseFullUrl Http "localhost" 8080 "/", "Bearer")
-
 getClient
   :: forall f t m
   .  (Traversable f, Applicative f, SupportsServantReflex t m)
   => ApiClient f t m
-getClient = ApiClient { .. } :: ApiClient f t m
+getClient = mkClient (pure $ BasePath "/") -- This would be much better if there was a RouteToUrl BackendRoute
   where
-    bp :: Dynamic t BaseUrl
-    bp = constDyn $ baseUrl
-    c :: ClientMulti t m (Api Token) f ()
-    c = clientA (Proxy :: Proxy (Api Token))  (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
-    apiUsersC :<|> apiUserC :<|> apiArticlesC :<|> apiProfileC = c
-    _apiUsers = UsersClient { .. }
+    mkClient bp = ApiClient { .. } :: ApiClient f t m
       where
-        _usersLogin :<|> _usersRegister = apiUsersC
-    _apiUser = UserClient { .. }
-      where
-        _userCurrent :<|> _userUpdate = apiUserC
-    _apiArticles = ArticlesClient { .. }
-      where
-        _articlesList :<|> _articlesCreate :<|> articleC = apiArticlesC
-        _articlesArticle slug = ArticleClient { .. }
+        c :: ClientMulti t m (Api Token) f ()
+        c = clientA (Proxy :: Proxy (Api Token))  (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
+        apiUsersC :<|> apiUserC :<|> apiArticlesC :<|> apiProfileC = c
+        _apiUsers = UsersClient { .. }
           where
-            _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC slug
-    _apiProfile = ProfileClient { .. }
-      where
-        _profileGet = apiProfileC
+            _usersLogin :<|> _usersRegister = apiUsersC
+        _apiUser = UserClient { .. }
+          where
+            _userCurrent :<|> _userUpdate = apiUserC
+        _apiArticles = ArticlesClient { .. }
+          where
+            _articlesList :<|> _articlesCreate :<|> articleC = apiArticlesC
+            _articlesArticle auth slug = ArticleClient { .. }
+              where
+                _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC auth slug
+        _apiProfile = ProfileClient { .. }
+          where
+            _profileGet = apiProfileC
 
 -- TODO : Make this not dodgy and put it in servant-reflex.
 instance (HasClientMulti t m api f tag, Reflex t, Applicative f)

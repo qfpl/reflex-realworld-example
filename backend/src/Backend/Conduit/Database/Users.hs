@@ -1,8 +1,9 @@
-module Backend.Conduit.Users.Database
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+module Backend.Conduit.Database.Users
   ( ProfileResult
   , ProfileRow
-  , attributesForInsert
-  , attributesForUpdate
+  , validateRegistrant
+  , validateUpdateUser
   , create
   , find
   , findByCredentials
@@ -13,92 +14,58 @@ module Backend.Conduit.Users.Database
   , update
   ) where
 
-import Control.Lens ((^.), _1, _2, view)
-import Control.Monad.Error.Class (MonadError, throwError)
-import Control.Monad.Reader.Class (MonadReader, ask)
-import Control.Monad.Trans.Control (MonadBaseControl)
-import Crypto.Scrypt
-  ( EncryptedPass(EncryptedPass, getEncryptedPass)
-  , Pass(Pass)
-  , encryptPassIO'
-  , verifyPass'
-  )
-import qualified Data.Map as Map
-import qualified Data.Text as Text
-import Data.Validation (Validation(Failure, Success), validation)
-import Database.Beam.Postgres.Extended
-  ( HasSqlEqualityCheck
-  , Nullable
-  , PgExpressionSyntax
-  , PgInsertReturning
-  , PgQExpr
-  , PgSelectSyntax
-  , PgUpdateReturning
-  , Q
-  , (&&.)
-  , (<-.)
-  , (==.)
-  , aggregate_
-  , all_
-  , default_
-  , delete
-  , exists_
-  , group_
-  , guard_
-  , insertExpressions
-  , insertReturning
-  , just_
-  , leftJoin_
-  , onConflictDefault
-  , pgBoolOr
-  , primaryKey
-  , references_
-  , runDelete
-  , runInsertReturning
-  , runSelect
-  , runUpdateReturning
-  , select
-  , updateReturning
-  , val_
-  )
-import Database.PostgreSQL.Simple (Connection)
-import Prelude hiding (find)
-import Backend.Conduit.Database
-  ( ConduitDb(conduitFollows, conduitUsers)
-  , QueryError
-  , conduitDb
-  , maybeRow
-  , singleRow
-  )
-import Backend.Conduit.Users.Database.Credentials (Credentials)
-import qualified Backend.Conduit.Users.Database.Credentials as Credentials
-import Backend.Conduit.Users.Database.Follow (Follow, FollowT(Follow))
-import qualified Backend.Conduit.Users.Database.Follow as Follow
-import qualified Backend.Conduit.Users.Database.User as User
-import Backend.Conduit.Users.Database.User
-  ( PrimaryKey(UserId)
-  , User
-  , UserId
-  , UserT(User)
-  )
-import Backend.Conduit.Users.Profile (Profile(Profile))
-import Backend.Conduit.Users.User.Attributes (Attributes(Attributes))
-import qualified Backend.Conduit.Users.User.Attributes as Attributes
-import Backend.Conduit.Validation (ValidationErrors, requiredText)
+import           Control.Lens                    (view, (^.), _1, _2)
+import           Control.Monad.Error.Class       (MonadError, throwError)
+import           Control.Monad.IO.Class          (MonadIO, liftIO)
+import           Control.Monad.Reader.Class      (MonadReader, ask)
+import           Control.Monad.Trans.Control     (MonadBaseControl)
+import           Crypto.Scrypt                   (EncryptedPass (EncryptedPass, getEncryptedPass),
+                                                  Pass (Pass), encryptPassIO', verifyPass')
+import           Data.Functor                    (void)
+import           Data.Functor.Compose            (Compose (Compose, getCompose))
+import qualified Data.Map                        as Map
+import           Data.Maybe                      (catMaybes, fromMaybe)
+import           Data.Text                       (Text)
+import qualified Data.Text                       as Text
+import           Data.Text.Encoding              (decodeUtf8, encodeUtf8)
+import           Data.Validation                 (Validation (Failure, Success), validation)
+import           Database.Beam.Postgres.Extended (HasSqlEqualityCheck, Nullable, PgExpressionSyntax,
+                                                  PgInsertReturning, PgQExpr, PgSelectSyntax,
+                                                  PgUpdateReturning, Q, aggregate_, all_, default_, delete,
+                                                  exists_, group_, guard_, insertExpressions, insertReturning,
+                                                  just_, leftJoin_, onConflictDefault, pgBoolOr, primaryKey,
+                                                  references_, runDelete, runInsertReturning, runSelect,
+                                                  runUpdateReturning, select, updateReturning, val_, (&&.),
+                                                  (<-.), (==.))
+import           Database.PostgreSQL.Simple      (Connection)
 
+import           Backend.Conduit.Database              (ConduitDb (conduitFollows, conduitUsers), QueryError,
+                                                        conduitDb, maybeRow, singleRow)
+import           Backend.Conduit.Database.Users.Follow (Follow, FollowT (Follow))
+import qualified Backend.Conduit.Database.Users.Follow as Follow
+import           Backend.Conduit.Database.Users.User   (PrimaryKey (UserId), User, UserId, UserT (User))
+import qualified Backend.Conduit.Database.Users.User   as User
+import           Backend.Conduit.Validation            (ValidationErrors, requiredText)
+import           Common.Conduit.Api.Profiles.Profile   (Profile (Profile))
+import           Common.Conduit.Api.User.Update        (UpdateUser (UpdateUser))
+import qualified Common.Conduit.Api.User.Update        as UpdateUser
+import           Common.Conduit.Api.Users.Credentials  (Credentials)
+import qualified Common.Conduit.Api.Users.Credentials  as Credentials
+import           Common.Conduit.Api.Users.Registrant   (Registrant (Registrant))
+import qualified Common.Conduit.Api.Users.Registrant   as Registrant
 insertUser
-  :: Attributes Identity -> PgInsertReturning User
-insertUser attributes
+  :: Registrant -> PgInsertReturning User
+insertUser reg
   = insertReturning
     (conduitUsers conduitDb)
     (insertExpressions
       [ User
           { User.id = default_
-          , User.password = val_ (Attributes.password attributes)
-          , User.email = val_ (Attributes.email attributes)
-          , User.bio = val_ (Attributes.bio attributes)
-          , User.username = val_ (Attributes.username attributes)
-          , User.image = val_ (Attributes.image attributes)
+          , User.password = val_ (Registrant.password reg)
+          , User.email = val_ (Registrant.email reg)
+          , User.bio = val_ ""
+          , User.username = val_ (Registrant.username reg)
+          , User.image = default_
           }
       ]
     )
@@ -111,23 +78,23 @@ create
      , MonadIO m
      , MonadBaseControl IO m
      )
-  => Attributes Identity
+  => Registrant
   -> m User
-create attributes = do
+create reg = do
   conn <- ask
-  runInsertReturning conn (insertUser attributes) singleRow
+  runInsertReturning conn (insertUser reg) singleRow
 
 updateUser
-  :: UserId -> Attributes Maybe -> PgUpdateReturning User
-updateUser userId attributes
+  :: UserId -> UpdateUser -> PgUpdateReturning User
+updateUser userId updateU
   = updateReturning
     (conduitUsers conduitDb)
     (\user -> catMaybes
-      [ (User.password user <-.) . val_ <$> Attributes.password attributes
-      , (User.email user <-.) . val_ <$> Attributes.email attributes
-      , (User.username user <-.) . val_ <$> Attributes.username attributes
-      , (User.bio user <-.) . val_ <$> Attributes.bio attributes
-      , (User.image user <-.) . val_ <$> Attributes.image attributes
+      [ (User.password user <-.) . val_ <$> UpdateUser.password updateU
+      , (User.email user <-.) . val_ <$> UpdateUser.email updateU
+      , (User.username user <-.) . val_ <$> UpdateUser.username updateU
+      , (User.bio user <-.) . val_ <$> UpdateUser.bio updateU
+      , (User.image user <-.) . val_ <$> pure (UpdateUser.image updateU)
       ]
     )
     ((val_ userId ==.) . primaryKey)
@@ -140,13 +107,13 @@ update
      , MonadBaseControl IO m
      )
   => Int
-  -> Attributes Maybe
+  -> UpdateUser
   -> m User
-update userId attributes = do
+update userId updateU = do
   conn <- ask
   runUpdateReturning
     conn
-    (updateUser (UserId userId) attributes)
+    (updateUser (UserId userId) updateU)
     singleRow
 
 follow
@@ -177,7 +144,7 @@ follow followerId followeeId = do
     singleRow
 
 unfollow
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m)
   => UserId
   -> UserId
   -> m ()
@@ -257,26 +224,20 @@ makeUsername
 makeUsername username =
   requiredText "username" username *> uniqueUsername username
 
-attributesForInsert
+validateRegistrant
   :: ( MonadIO m
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
      )
-  => Text
-  -> Text
-  -> Text
-  -> Text
-  -> Maybe Text
-  -> m (Attributes Identity)
-attributesForInsert password email username bio image =
+  => Registrant
+  -> m Registrant
+validateRegistrant reg =
   (validation throwError pure =<<) . getCompose $
-  Attributes
-    <$> makePassword password
-    <*> makeEmail email
-    <*> makeUsername username
-    <*> pure bio
-    <*> pure image
+  Registrant
+    <$> makeUsername (Registrant.username reg)
+    <*> makeEmail (Registrant.email reg)
+    <*> makePassword (Registrant.password reg)
 
 makeUpdateEmail
   :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
@@ -296,27 +257,23 @@ makeUpdateUsername current value
   | value == User.username current = pure value
   | otherwise = makeUsername value
 
-attributesForUpdate
+validateUpdateUser
   :: ( MonadIO m
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
      )
   => User
-  -> Maybe Text
-  -> Maybe Text
-  -> Maybe Text
-  -> Maybe Text
-  -> Maybe (Maybe Text)
-  -> m (Attributes Maybe)
-attributesForUpdate current password email username bio image =
+  -> UpdateUser
+  -> m UpdateUser
+validateUpdateUser current uu =
   (validation throwError pure =<<) . getCompose $
-  Attributes
-    <$> traverse makePassword password
-    <*> traverse (makeUpdateEmail current) email
-    <*> traverse (makeUpdateUsername current) username
-    <*> pure bio
-    <*> pure image
+  UpdateUser
+    <$> traverse makePassword (UpdateUser.password uu)
+    <*> traverse (makeUpdateEmail current) (UpdateUser.email uu)
+    <*> traverse (makeUpdateUsername current) (UpdateUser.username uu)
+    <*> pure (UpdateUser.bio uu)
+    <*> pure (UpdateUser.image uu)
 
 selectUserBy
   :: HasSqlEqualityCheck PgExpressionSyntax a

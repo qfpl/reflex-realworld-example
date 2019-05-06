@@ -1,15 +1,17 @@
-{-# LANGUAGE DataKinds     #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeOperators #-}
-module Common.Conduit.Api.User where
+{-# LANGUAGE DataKinds, DeriveGeneric, TypeOperators #-}
+module Common.Conduit.Api.User
+  ( UserApi
+  , module Namespace
+  , module Account
+  , module UpdateUser
+  ) where
 
-import           Servant.API                        ((:<|>), (:>), Get, JSON,
-                                                     Put, ReqBody)
-import           Servant.Auth                       (Auth, JWT)
+import Servant.API  ((:<|>), (:>), Get, JSON, Put, ReqBody)
+import Servant.Auth (Auth, JWT)
 
-import           Common.Conduit.Api.Namespace    (Namespace)
-import           Common.Conduit.Api.User.Account (Account)
-import           Common.Conduit.Api.User.Update  (UpdateUser)
+import Common.Conduit.Api.Namespace    as Namespace (Namespace (Namespace))
+import Common.Conduit.Api.User.Account as Account (Account (Account), Token (Token))
+import Common.Conduit.Api.User.Update  as UpdateUser (UpdateUser (UpdateUser))
 
 type UserApi token =
   (

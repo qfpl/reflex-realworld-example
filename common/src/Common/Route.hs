@@ -1,30 +1,23 @@
-{-# LANGUAGE EmptyCase             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE EmptyCase, FlexibleContexts, FlexibleInstances, GADTs, KindSignatures, LambdaCase    #-}
+{-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, PolyKinds, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, TypeFamilies                                                        #-}
 
 module Common.Route where
 
-import           Control.Lens                  hiding (bimap)
-import           Obelisk.Route
-import           Prelude                       hiding (id, (.))
+import Control.Lens  hiding (bimap)
+import Obelisk.Route
+import Prelude       hiding (id, (.))
 
 import           Control.Categorical.Bifunctor (bimap)
-import           Control.Category              ((.), id)
+import           Control.Category              (id, (.))
+import           Control.Monad.IO.Class        (MonadIO, liftIO)
 import           Data.Functor.Identity         (Identity)
 import           Data.Functor.Sum              (Sum (InL, InR))
 import           Data.Text                     (Text)
-
+import qualified Data.Text                     as T
+import qualified Obelisk.ExecutableConfig      as ObConfig
 import           Obelisk.Route.TH              (deriveRouteComponent)
+
 
 newtype DocumentSlug = DocumentSlug { unDocumentSlug :: Text } deriving (Eq, Ord, Show)
 makeWrapped ''DocumentSlug
@@ -55,10 +48,8 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
   pathComponentEncoder $ \case
     InL backendRoute -> case backendRoute of
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_Api -> PathSegment "api" $ id
+      BackendRoute_Api     -> PathSegment "api" $ id
     InR obeliskRoute -> obeliskRouteSegment obeliskRoute $ \case
-      -- The encoder given to PathEnd determines how to parse query parameters,
-      -- in this example, we have none, so we insist on it.
       FrontendRoute_Home -> PathEnd $ unitEncoder mempty
       FrontendRoute_Login -> PathSegment "login" $ unitEncoder mempty
       FrontendRoute_Register -> PathSegment "register" $ unitEncoder mempty
@@ -69,6 +60,13 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         let profileRouteEncoder = pathComponentEncoder $ \case
               ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
         in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) )
+
+getAppRoute :: MonadIO m => m Text
+getAppRoute = do
+    mroute <- liftIO $ ObConfig.get "config/common/route"
+    case mroute of
+      Nothing -> fail "Error getAppRoute: config/common/route not defined"
+      Just r  -> return $ T.dropWhileEnd (== '/') $ T.strip r
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute

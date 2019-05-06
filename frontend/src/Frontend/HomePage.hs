@@ -33,12 +33,12 @@ homePage = prerender_ (text "Loading...") $ elClass "div" "home-page" $ do
   tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
   pbE <- getPostBuild
   artE <- getClient ^. apiArticles . articlesList . to (\f -> f
-    (constDyn . Identity $ QNone)
-    (constDyn . Identity $ QNone)
-    (constDyn . Identity $ [])
-    (constDyn . Identity $ [])
-    (constDyn . Identity $ [])
     (Identity <$> tokDyn)
+    (constDyn . Identity $ QNone)
+    (constDyn . Identity $ QNone)
+    (constDyn . Identity $ [])
+    (constDyn . Identity $ [])
+    (constDyn . Identity $ [])
     (leftmost [pbE,void $ updated tokDyn])
     )
   artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)

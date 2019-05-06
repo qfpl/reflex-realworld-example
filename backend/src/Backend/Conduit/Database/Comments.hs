@@ -1,58 +1,38 @@
-module Backend.Conduit.Comments.Database
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+module Backend.Conduit.Database.Comments
   ( create
   , destroy
   , find
   , forArticle
   ) where
 
-import Control.Lens ((^.), _1, _2, view)
-import Control.Monad.Error.Class (MonadError)
-import Control.Monad.Reader.Class (MonadReader, ask)
-import Control.Monad.Trans.Control (MonadBaseControl)
-import Data.Time (UTCTime, getCurrentTime)
-import Database.Beam.Postgres.Extended
-  ( PgInsertReturning
-  , PgQExpr
-  , PgSelectSyntax
-  , Q
-  , (==.)
-  , all_
-  , default_
-  , delete
-  , guard_
-  , insertExpressions
-  , insertReturning
-  , onConflictDefault
-  , primaryKey
-  , runDelete
-  , runInsertReturning
-  , runSelect
-  , select
-  , val_
-  )
-import Database.PostgreSQL.Simple (Connection)
-import Prelude hiding (find)
-import Backend.Conduit.Articles.Database.Article (ArticleId)
-import qualified Backend.Conduit.Articles.Database.Article as PersistedArticle
-import Backend.Conduit.Comments.Comment (Comment(Comment))
-import qualified Backend.Conduit.Comments.Database.Comment as Persisted
-import Backend.Conduit.Comments.Database.Comment (PrimaryKey(CommentId))
-import Backend.Conduit.Database
-  ( ConduitDb(conduitArticles, conduitComments)
-  , QueryError
-  , conduitDb
-  , maybeRow
-  , rowList
-  , singleRow
-  )
-import Backend.Conduit.Users.Database
-  ( ProfileResult
-  , ProfileRow
-  , selectProfiles
-  )
-import Backend.Conduit.Users.Database.User (UserId)
-import qualified Backend.Conduit.Users.Database.User as User
-import Backend.Conduit.Users.Profile (Profile(Profile))
+import Control.Lens                    (view, (^.), _1, _2)
+import Control.Monad.Error.Class       (MonadError)
+import Control.Monad.IO.Class          (MonadIO, liftIO)
+import Control.Monad.Reader.Class      (MonadReader, ask)
+import Control.Monad.Trans.Control     (MonadBaseControl)
+import Data.Functor                    (void)
+import Data.Maybe                      (fromMaybe)
+import Data.Text                       (Text)
+import Data.Time                       (UTCTime, getCurrentTime)
+import Database.Beam.Postgres.Extended (PgInsertReturning, PgQExpr, PgSelectSyntax, Q, all_, default_, delete,
+                                        guard_, insertExpressions, insertReturning, onConflictDefault,
+                                        primaryKey, runDelete, runInsertReturning, runSelect, select, val_,
+                                        (==.))
+import Database.PostgreSQL.Simple      (Connection)
+
+import           Backend.Conduit.Database                  (ConduitDb (conduitArticles, conduitComments),
+                                                            QueryError, conduitDb, maybeRow, rowList,
+                                                            singleRow)
+import           Backend.Conduit.Database.Articles.Article (ArticleId)
+import qualified Backend.Conduit.Database.Articles.Article as PersistedArticle
+import           Backend.Conduit.Database.Comments.Comment (PrimaryKey (CommentId))
+import qualified Backend.Conduit.Database.Comments.Comment as Persisted
+import           Backend.Conduit.Database.Users            (ProfileResult, ProfileRow, selectProfiles)
+import           Backend.Conduit.Database.Users.User       (UserId)
+import qualified Backend.Conduit.Database.Users.User       as User
+import           Common.Conduit.Api.Articles.Comment       (Comment (Comment))
+import           Common.Conduit.Api.Profiles.Profile       (Profile (Profile))
 
 insertComment
   :: UserId -> ArticleId -> Text -> UTCTime -> PgInsertReturning Persisted.Comment
