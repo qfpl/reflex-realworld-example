@@ -16,7 +16,7 @@ import           Common.Conduit.Api.Articles.Attributes (ArticleAttributes (..),
 import           Common.Conduit.Api.Namespace           (Namespace (Namespace), unNamespace)
 import qualified Common.Conduit.Api.User.Account        as Account
 import           Common.Route                           (DocumentSlug (..), FrontendRoute (..))
-import           Frontend.Conduit.Client                (apiArticles, articlesCreate, getClient)
+import qualified Frontend.Conduit.Client                as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                         (buttonClass)
 
@@ -65,12 +65,12 @@ editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
                   <*> descI  ^. textInput_value
                   <*> bodyI  ^. textArea_value
                   <*> constDyn Set.empty
-            resE <- getClient ^. apiArticles . articlesCreate . to (\f -> f
-              (constDyn . Identity . Just $ Account.token acct)
-              (pure . pure . Namespace <$> createArticle)
+            resE <- Client.createArticle
+              (constDyn . Just $ Account.token acct)
+              (pure . Namespace <$> createArticle)
               publishE
-              )
-            let successE = fmapMaybe (reqSuccess . runIdentity) resE
+
+            let successE = fmapMaybe reqSuccess resE
             setRoute $
               (\a -> FrontendRoute_Article :/ (DocumentSlug (Article.slug a)))
               . unNamespace

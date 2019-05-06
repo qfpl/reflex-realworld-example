@@ -32,7 +32,7 @@ import qualified Backend.Conduit.Database                  as Database
 import qualified Backend.Conduit.Database.Articles         as DBArticles
 import qualified Backend.Conduit.Database.Articles.Article as DBArticle
 import qualified Backend.Conduit.Database.Comments         as DBComments
---import qualified Backend.Conduit.Database.Tags             as DBTags
+import qualified Backend.Conduit.Database.Tags             as DBTags
 import qualified Backend.Conduit.Database.Users            as DBUsers
 import qualified Backend.Conduit.Database.Users.User       as DBUser
 import           Backend.Conduit.Errors

@@ -11,12 +11,12 @@ import qualified Data.Map               as Map
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
 import           Servant.Common.Req     (reqSuccess)
 
-import Common.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
-import Common.Conduit.Api.Users.Registrant (Registrant (Registrant))
-import Common.Route                        (FrontendRoute (..))
-import Frontend.Conduit.Client
-import Frontend.FrontendStateT
-import Frontend.Utils                      (buttonClass)
+import           Common.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
+import           Common.Conduit.Api.Users.Registrant (Registrant (Registrant))
+import           Common.Route                        (FrontendRoute (..))
+import qualified Frontend.Conduit.Client             as Client
+import           Frontend.FrontendStateT
+import           Frontend.Utils                      (buttonClass)
 
 
 register
@@ -68,7 +68,7 @@ register = noUserWidget $ elClass "div" "auth-page" $ do
                 <$> usernameI ^. textInput_value
                 <*> emailI ^. textInput_value
                 <*> passI ^. textInput_value
-          resE <- getClient ^. apiUsers . usersRegister . to (\f -> f (pure . pure . Namespace <$> registrant) submitE)
-          tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe (reqSuccess . runIdentity) $ resE)
+          resE <- Client.register (pure . Namespace <$> registrant) submitE
+          tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe reqSuccess $ resE)
           pure ()
   pure ()

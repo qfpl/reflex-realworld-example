@@ -1,59 +1,42 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE PatternSynonyms            #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE RecursiveDo                #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, GADTs, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms, RankNTypes #-}
+{-# LANGUAGE RecursiveDo, ScopedTypeVariables, TypeApplications                                #-}
 
 module Frontend where
 
-import           Control.Lens
-import           Reflex.Dom.Core hiding (Namespace)
+import Control.Lens
+import Reflex.Dom.Core hiding (Namespace)
 
-import           Control.Monad.Trans.Reader          (mapReaderT)
-import           Data.List.NonEmpty                  (NonEmpty((:|)))
-import qualified Data.Map                            as Map
-import           Data.Monoid                         (appEndo)
-import           Data.Text                           (Text)
-import           Obelisk.Frontend                    (Frontend (Frontend),
-                                                      ObeliskWidget)
-import           Obelisk.Route.Frontend              (pattern (:/), R,
-                                                      RouteToUrl, RoutedT,
-                                                      SetRoute, mapRoutedT,
-                                                      subRoute_)
-import           Reflex.Dom.Storage.Base             (StorageT (..),
-                                                      StorageType (LocalStorage),
-                                                      runStorageT)
-import           Reflex.Dom.Storage.Class            (askStorageTag, pdmInsert,
-                                                      pdmRemove, tellStorage)
-import           Servant.Common.Req                  (ReqResult, reqSuccess)
+import           Control.Monad.Trans.Reader (mapReaderT)
+import           Data.Functor               (void)
+import           Data.List.NonEmpty         (NonEmpty ((:|)))
+import qualified Data.Map                   as Map
+import           Data.Monoid                (appEndo)
+import           Data.Text                  (Text)
+import           Obelisk.Frontend           (Frontend (Frontend), ObeliskWidget)
+import           Obelisk.Route.Frontend     (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, mapRoutedT,
+                                             subRoute_)
+import           Reflex.Dom.Storage.Base    (StorageT (..), StorageType (LocalStorage), runStorageT)
+import           Reflex.Dom.Storage.Class   (askStorageTag, pdmInsert, pdmRemove, tellStorage)
+import           Servant.Common.Req         (ReqResult, reqSuccess)
 
 
-import           Common.Route                        (FrontendRoute (..))
-import           Frontend.Article                    (article)
-import           Frontend.Editor                     (editor)
-import           Frontend.FrontendStateT
-import           Frontend.HomePage                   (homePage)
-import           Frontend.LocalStorageKey            (LocalStorageTag (..))
-import           Frontend.Login                      (login)
-import           Frontend.Nav                        (nav)
-import           Frontend.Profile                    (profile)
-import           Frontend.Register                   (register)
-import           Frontend.Settings                   (settings)
-import           Frontend.Utils                      (pathSegmentSubRoute,
-                                                      routeLinkClass)
-import           Common.Conduit.Api.Namespace     (Namespace, unNamespace)
+import           Common.Conduit.Api.Namespace    (Namespace, unNamespace)
 import           Common.Conduit.Api.User.Account (Account)
 import qualified Common.Conduit.Api.User.Account as Account
-import           Frontend.Conduit.Client            (apiUser, getClient,
-                                                      userCurrent)
+import           Common.Route                    (FrontendRoute (..))
+import           Frontend.Article                (article)
+import qualified Frontend.Conduit.Client         as Client
+import           Frontend.Editor                 (editor)
+import           Frontend.FrontendStateT
+import           Frontend.HomePage               (homePage)
+import           Frontend.LocalStorageKey        (LocalStorageTag (..))
+import           Frontend.Login                  (login)
+import           Frontend.Nav                    (nav)
+import           Frontend.Profile                (profile)
+import           Frontend.Register               (register)
+import           Frontend.Settings               (settings)
+import           Frontend.Utils                  (pathSegmentSubRoute, routeLinkClass)
 
 mapStorageT :: (forall x. m x -> n x) -> StorageT t k m a -> StorageT t k n a
 mapStorageT f = StorageT . mapReaderT (mapEventWriterT f) . unStorageT
@@ -86,7 +69,7 @@ htmlBody = mapRoutedT unravelAppState $ do
   prerender_ (pure ()) $ do
     jwtDyn <- askStorageTag LocalStorageJWT
     pbE <- getPostBuild
-    currentUserE <- getClient ^. apiUser . userCurrent . to (\f -> f (Identity <$> jwtDyn) pbE)
+    currentUserE <- Client.getCurrentUser jwtDyn (leftmost [pbE, void $ updated jwtDyn])
     currentUserResUpdate currentUserE
   stateDyn <- askFrontendState
   nav ((view loggedInAccount) <$> stateDyn)
@@ -94,12 +77,12 @@ htmlBody = mapRoutedT unravelAppState $ do
   footer
   where
     currentUserResUpdate
-      :: Event t (Identity (ReqResult () (Namespace "user" Account)))
+      :: Event t (ReqResult () (Namespace "user" Account))
       -> RoutedAppState t (Client m) ()
     currentUserResUpdate =
       tellEvent
       . fmap ((:| []) . LogIn . unNamespace)
-      . fmapMaybe (reqSuccess . runIdentity)
+      . fmapMaybe reqSuccess
 
     unravelAppState :: AppState t m () -> m ()
     unravelAppState m = mdo

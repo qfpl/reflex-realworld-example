@@ -33,9 +33,7 @@ import qualified Common.Conduit.Api.User.Account           as Account
 import           Common.Route                              (DocumentSlug (..), FrontendRoute (..),
                                                             Username (..))
 import           Frontend.ArticlePreview                   (profileImage, profileRoute)
-import           Frontend.Conduit.Client                   (ArticleClient, apiArticles, articleCommentCreate,
-                                                            articleCommentDelete, articleComments, articleGet,
-                                                            articlesArticle, getClient)
+import qualified Frontend.Conduit.Client                   as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                            (buttonClass, routeLinkClass, routeLinkDynClass,
                                                             showText)
@@ -53,14 +51,14 @@ article = elClass "div" "article-page" $ prerender_ (text "Loading...") $ do
   -- We ask our route for the document slug and make the backend call on load
   slugDyn <- askRoute
   pbE <- getPostBuild
-  loadResE <- getClient ^. apiArticles . articlesArticle
-     . to ($ error "TODO: Get user into here after prerender tidy")
-     . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn)) . articleGet
-     . to ($ pbE)
+  loadResE <- Client.getArticle
+     (error "TODO: Get user into here after prerender tidy")
+     (pure . unDocumentSlug <$> slugDyn)
+     pbE
 
   -- While we are loading, we dont have an article
   -- The types are honest about this.
-  let loadSuccessE :: Event t (Maybe Article.Article) = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
+  let loadSuccessE :: Event t (Maybe Article.Article) = fmap unNamespace . reqSuccess <$> loadResE
 
   articleDyn <- holdDyn Nothing loadSuccessE
 
@@ -177,12 +175,11 @@ comments
 comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
   -- Load the comments when this widget is built
   pbE <- getPostBuild
-  let articleClient :: ArticleClient Identity t (Client m) = getClient ^. apiArticles . articlesArticle
-        . to ($ (pure . pure . pure $ Account.token acct))
-        . to ($ (Identity $ Right . unDocumentSlug <$> slugDyn))
+  let tokenEDyn = constDyn . pure . Account.token $ acct
+  let slugEDyn  = pure . unDocumentSlug <$> slugDyn
 
-  loadResE <-  articleClient ^. articleComments . to ($ pbE)
-  let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) loadResE
+  loadResE <- Client.getComments tokenEDyn slugEDyn (leftmost [pbE, void $ updated slugEDyn])
+  let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
   -- Turn it into a map so that we have IDs for each comment
   let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
 
@@ -204,12 +201,12 @@ comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
             ,("rows","3")
             ]))
           & textAreaConfig_setValue .~ ("" <$ newE)
-    let createCommentDyn = Identity . Right . Namespace <$> CreateComment.CreateComment
+    let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
           <$> commentI ^.textArea_value
     postE <- elClass "div" "card-footer" $ do
       buttonClass "btn btn-sm btn-primary" $ text "Post Comment"
-    submitResE <- articleClient ^. articleCommentCreate . to (\f -> f createCommentDyn postE)
-    let newE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) submitResE
+    submitResE <- Client.createComment tokenEDyn slugEDyn createCommentDyn postE
+    let newE = fmapMaybe (fmap unNamespace . reqSuccess) submitResE
     pure newE
 
   -- This takes the Map Int Comment and displays them all
@@ -232,7 +229,6 @@ comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
         deleteClickE <- elClass "span" "mod-options" $ do
           (trashElt,_) <- elClass' "i" "ion-trash-a" blank
           pure $ domEvent Click trashElt
-        deleteResE <- articleClient ^. articleCommentDelete
-          . to (\f -> f (pure . constDyn . pure $ cId) deleteClickE)
-        pure $ fmapMaybe (void . reqSuccess . runIdentity) deleteResE
+        deleteResE <- Client.deleteComment tokenEDyn slugEDyn (constDyn . pure $ cId) deleteClickE
+        pure $ fmapMaybe (void . reqSuccess) deleteResE
   pure ()

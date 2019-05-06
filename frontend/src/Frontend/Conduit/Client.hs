@@ -1,22 +1,20 @@
-{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings #-}
-{-# LANGUAGE PolyKinds, RecordWildCards, ScopedTypeVariables, TemplateHaskell, TypeFamilies           #-}
-{-# LANGUAGE TypeOperators                                                                            #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
+{-# LANGUAGE DataKinds, FlexibleContexts #-}
 module Frontend.Conduit.Client where
 
 import Control.Lens
 import Reflex
 
-import Control.Applicative    (liftA2)
-import Data.Proxy             (Proxy (Proxy))
-import Data.Text              (Text)
-import Servant.API            ((:<|>) ((:<|>)), (:>), NoContent)
-import Servant.Auth           (Auth, JWT)
-import Servant.Common.Req     (QParam, Req, headers)
-import Servant.Reflex         (BaseUrl (BasePath), SupportsServantReflex)
-import Servant.Reflex.Multi   (ClientMulti, HasClientMulti (..), ReqResult, clientA)
+import Data.Functor.Identity (Identity (..))
+import Data.Proxy            (Proxy (Proxy))
+import Data.Text             (Text)
+import Servant.API           ((:<|>) ((:<|>)), (:>), NoContent)
+import Servant.Auth          (Auth, JWT)
+import Servant.Common.Req    (QParam, Req, headers)
+import Servant.Reflex        (BaseUrl (BasePath), SupportsServantReflex)
+import Servant.Reflex.Multi  (ClientMulti, HasClientMulti (..), ReqResult, clientA)
 
-import Common.Conduit.Api                        (Api)
+import Common.Conduit.Api (Api)
+
 import Common.Conduit.Api.Articles.Article       (Article)
 import Common.Conduit.Api.Articles.Articles      (Articles)
 import Common.Conduit.Api.Articles.Attributes    (CreateArticle)
@@ -28,125 +26,152 @@ import Common.Conduit.Api.User.Account           (Account, Token, getToken)
 import Common.Conduit.Api.User.Update            (UpdateUser)
 import Common.Conduit.Api.Users.Credentials      (Credentials)
 import Common.Conduit.Api.Users.Registrant       (Registrant)
+import Frontend.Conduit.Client.Internal
 
-data UsersClient f t m = UsersClient
-  { _usersLogin
-    :: Dynamic t (f (Either Text (Namespace "user" Credentials)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
-  , _usersRegister
-    :: Dynamic t (f (Either Text (Namespace "user" Registrant)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
-  }
-makeLenses ''UsersClient
+login
+  :: SupportsServantReflex t m
+  => Dynamic t (Either Text (Namespace "user" Credentials))
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "user" Account)))
+login credDyn submitE = unIdF $
+  getClient ^. apiUsers . usersLogin . fillIdF credDyn . fill submitE
 
-data UserClient f t m = UserClient
-  { _userCurrent
-    :: Dynamic t (f (Maybe Token))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
-  , _userUpdate
-    :: Dynamic t (f (Maybe Token))
-    -> Dynamic t (f (Either Text (Namespace "user" UpdateUser)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "user" Account))))
-  }
-makeLenses ''UserClient
+register
+  :: SupportsServantReflex t m
+  => Dynamic t (Either Text (Namespace "user" Registrant))
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "user" Account)))
+register regDyn submitE = unIdF $
+  getClient ^. apiUsers . usersRegister . fillIdF regDyn . fill submitE
 
-data ArticleClient f t m = ArticleClient
-  { _articleGet
-    :: Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "article" Article))))
-  , _articleComments
-    :: Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "comments" [Comment]))))
-  , _articleCommentCreate
-    :: Dynamic t (f (Either Text (Namespace "comment" CreateComment)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "comment" Comment))))
-  , _articleCommentDelete
-    :: f (Dynamic t (Either Text Int))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () NoContent)))
-  }
-makeLenses ''ArticleClient
+getCurrentUser
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "user" Account)))
+getCurrentUser tokenDyn submitE = unIdF $
+  getClient ^. apiUser . userCurrent . fillIdF tokenDyn . fill submitE
 
-data ArticlesClient f t m = ArticlesClient
-  { _articlesList
-    :: Dynamic t (f (Maybe Token))
-    -> Dynamic t (f (QParam Integer))
-    -> Dynamic t (f (QParam Integer))
-    -> Dynamic t (f [Text])
-    -> Dynamic t (f [Text])
-    -> Dynamic t (f [Text])
-    -> Event t ()
-    -> m (Event t (f (ReqResult () Articles)))
-  , _articlesCreate
-    :: Dynamic t (f (Maybe Token))
-    -> Dynamic t (f (Either Text (Namespace "article" CreateArticle)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "article" Article))))
-  , _articlesArticle :: Dynamic t (f (Maybe Token)) -> f (Dynamic t (Either Text Text)) -> ArticleClient f t m
-  }
-makeLenses ''ArticlesClient
+updateCurrentUser
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text (Namespace "user" UpdateUser))
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "user" Account)))
+updateCurrentUser tokenDyn updateDyn submitE = unIdF $
+  getClient ^. apiUser . userUpdate . fillIdF tokenDyn . fillIdF updateDyn . fill submitE
 
-data ProfileClient f t m = ProfileClient
-  { _profileGet
-    :: Dynamic t (f (Maybe Token))
-    -> (f (Dynamic t (Either Text Text)))
-    -> Event t ()
-    -> m (Event t (f (ReqResult () (Namespace "profile" Profile))))
-  }
-makeLenses ''ProfileClient
+getProfile
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text Text)
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "profile" Profile)))
+getProfile tokenDyn usernameDyn submitE = unIdF $
+  getClient ^. apiProfile . profileGet . fillIdF tokenDyn . fillId usernameDyn . fill submitE
 
-data ApiClient f t m = ApiClient
-  { _apiUsers    :: UsersClient f t m
-  , _apiUser     :: UserClient f t m
-  , _apiArticles :: ArticlesClient f t m
-  , _apiProfile  :: ProfileClient f t m
-  }
-makeLenses ''ApiClient
+-- TODO FollowUser
+-- TODO UnFollowUser
 
-getClient
-  :: forall f t m
-  .  (Traversable f, Applicative f, SupportsServantReflex t m)
-  => ApiClient f t m
-getClient = mkClient (pure $ BasePath "/") -- This would be much better if there was a RouteToUrl BackendRoute
-  where
-    mkClient bp = ApiClient { .. } :: ApiClient f t m
-      where
-        c :: ClientMulti t m (Api Token) f ()
-        c = clientA (Proxy :: Proxy (Api Token))  (Proxy :: Proxy m) (Proxy :: Proxy f) (Proxy :: Proxy ()) bp
-        apiUsersC :<|> apiUserC :<|> apiArticlesC :<|> apiProfileC = c
-        _apiUsers = UsersClient { .. }
-          where
-            _usersLogin :<|> _usersRegister = apiUsersC
-        _apiUser = UserClient { .. }
-          where
-            _userCurrent :<|> _userUpdate = apiUserC
-        _apiArticles = ArticlesClient { .. }
-          where
-            _articlesList :<|> _articlesCreate :<|> articleC = apiArticlesC
-            _articlesArticle auth slug = ArticleClient { .. }
-              where
-                _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC auth slug
-        _apiProfile = ProfileClient { .. }
-          where
-            _profileGet = apiProfileC
+listArticles
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (QParam Integer)
+  -> Dynamic t (QParam Integer)
+  -> Dynamic t [Text]
+  -> Dynamic t [Text]
+  -> Dynamic t [Text]
+  -> Event t ()
+  -> m (Event t (ReqResult () Articles))
+listArticles tokenDyn limitDyn offsetDyn authorsDyn favoritedsDyn tagsDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesList
+    . fillIdF tokenDyn
+    . fillIdF limitDyn
+    . fillIdF offsetDyn
+    . fillIdF authorsDyn
+    . fillIdF favoritedsDyn
+    . fillIdF tagsDyn
+    . fill submitE
 
--- TODO : Make this not dodgy and put it in servant-reflex.
-instance (HasClientMulti t m api f tag, Reflex t, Applicative f)
-  => HasClientMulti t m (Auth '[JWT] Token :> api) f tag where
-  type ClientMulti t m (Auth '[JWT] Token :> api) f tag =
-    Dynamic t (f (Maybe Token)) -> ClientMulti t m api f tag
+-- TODO Feed
 
-  clientWithRouteMulti Proxy q f t reqs baseurl opts authdatas =
-    clientWithRouteMulti (Proxy :: Proxy api) q f t reqs' baseurl opts
-    where
-      req' :: (Maybe Token) -> Req t -> Req t
-      req' Nothing  r = r
-      req' (Just a) r = r
-        { headers = ( "Authorization" , constDyn . pure . getToken $ a ) : (headers r)
-        }
-      reqs' = liftA2 req' <$> authdatas <*> reqs
+getArticle
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text Text)
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "article" Article)))
+getArticle tokenDyn slugDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesArticle . fillIdF tokenDyn . fillId slugDyn . articleGet . fill submitE
+
+createArticle
+  :: SupportsServantReflex t m
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text (Namespace "article" CreateArticle))
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "article" Article)))
+createArticle tokenDyn createDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesCreate . fillIdF tokenDyn . fillIdF createDyn . fill submitE
+
+-- TODO Update Article
+-- TODO Delete Article
+
+createComment
+  :: (SupportsServantReflex t m)
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text Text)
+  -> Dynamic t (Either Text (Namespace "comment" CreateComment))
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "comment" Comment)))
+createComment tokenDyn slugDyn createDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesArticle
+    . fillIdF tokenDyn
+    . fillId slugDyn
+    . articleCommentCreate
+    . fillIdF createDyn
+    . fill submitE
+
+getComments
+  :: (SupportsServantReflex t m)
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text Text)
+  -> Event t ()
+  -> m (Event t (ReqResult () (Namespace "comments" [Comment])))
+getComments tokenDyn slugDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesArticle
+    . fillIdF tokenDyn
+    . fillId slugDyn
+    . articleComments
+    . fill submitE
+
+deleteComment
+  :: (SupportsServantReflex t m)
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (Either Text Text)
+  -> Dynamic t (Either Text Int)
+  -> Event t ()
+  -> m (Event t (ReqResult () NoContent))
+deleteComment tokenDyn slugDyn commentIdDyn submitE = unIdF $
+  getClient ^. apiArticles . articlesArticle
+    . fillIdF tokenDyn
+    . fillId slugDyn
+    . articleCommentDelete
+    . fillId commentIdDyn
+    . fill submitE
+
+-- TODO Favorite / Unfavorite
+-- TODO GetTags
+
+
+
+unIdF :: (Reflex t, Functor m) => m (Event t (Identity a)) -> m (Event t a)
+unIdF = fmap (fmap runIdentity)
+
+idF :: Functor f => f a -> f (Identity a)
+idF = fmap Identity
+
+fillId :: a -> Getting f (Identity a -> b) b
+fillId a = fill (Identity a)
+
+fillIdF :: Functor f => f a -> Getting g (f (Identity a) -> b) b
+fillIdF a = fill (idF a)

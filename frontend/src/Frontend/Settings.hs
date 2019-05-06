@@ -19,8 +19,7 @@ import           Common.Conduit.Api.Namespace    (Namespace (Namespace), unNames
 import qualified Common.Conduit.Api.User.Account as Account
 import           Common.Conduit.Api.User.Update  (UpdateUser (UpdateUser))
 import           Common.Route                    (FrontendRoute (..), Username (..))
-import           Frontend.Conduit.Client         (getClient)
-import           Frontend.Conduit.Client         (apiUser, userCurrent, userUpdate)
+import qualified Frontend.Conduit.Client         as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                  (buttonClass)
 
@@ -47,14 +46,12 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
         prerender_ blank $ el "form" $ do
           -- When this FRP network is built, we want to load the existing data
           pbE <- getPostBuild
+          let tokenDyn = constDyn . pure . Account.token $ acct
           -- The only input is the JWT token that we load from the FrontendState
-          let tokenDyn = constDyn . Identity . pure . Account.token $ acct
-          loadResE <- getClient ^. apiUser . userCurrent . to (\f -> f
-            tokenDyn
-            pbE
-            )
+          loadResE <- Client.getCurrentUser tokenDyn pbE
+
           -- Again, we throw away errors for now. We should fix this.
-          let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) loadResE
+          let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
           el "fieldset" $ do
             urlI <- elClass "fieldset" "form-group" $
               textInput $ def
@@ -106,13 +103,10 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
 
             -- Make the backend call when the submit button is clicked
             -- and we have a valid UpdateUser
-            updateResE <- getClient ^. apiUser . userUpdate . to (\f -> f
-              tokenDyn
-              (pure . pure . Namespace <$> updateDyn)
-              updateE)
+            updateResE <- Client.updateCurrentUser tokenDyn (pure . Namespace <$> updateDyn) updateE
 
             -- More throwing away errors
-            let updateSuccessE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) updateResE
+            let updateSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) updateResE
 
             -- Once we have updated successfully, we redirect to the profile page.
             setRoute $

@@ -16,8 +16,7 @@ import qualified Common.Conduit.Api.Profiles.Profile  as Profile
 import qualified Common.Conduit.Api.User.Account      as Account
 import           Common.Route                         (FrontendRoute (..), ProfileRoute (..), Username (..))
 import           Frontend.ArticlePreview              (articlesPreview, profileImage)
-import           Frontend.Conduit.Client              (apiArticles, apiProfile, articlesList, getClient,
-                                                       profileGet)
+import qualified Frontend.Conduit.Client              as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                       (buttonClass, routeLinkDynClass)
 
@@ -43,12 +42,12 @@ profile usernameDyn =
       elClass "div" "row" $
         elClass "div" "col-xs-12 col-md-10 offset-md-1" $ prerender_ (text "Loading") $ do
           pbE <- getPostBuild
-          loadResE <- getClient ^. apiProfile . profileGet . to (\f -> f
+          loadResE <- Client.getProfile
             (error "TODO: Fix prerendering")
-            (Identity $ pure . unUsername <$> usernameDyn)
+            (pure . unUsername <$> usernameDyn)
             (leftmost [pbE,void . updated $ usernameDyn])
-            )
-          let loadSuccessE = fmap unNamespace . reqSuccess . runIdentity <$> loadResE
+
+          let loadSuccessE = fmap unNamespace . reqSuccess <$> loadResE
           void $ widgetHold (text "Loading") $ ffor loadSuccessE $
             maybe blank $ \acct -> do
               profileImage "user-img" (constDyn $ Profile.image acct)
@@ -70,16 +69,16 @@ profile usernameDyn =
         prerender_ (text "Loading...") $ do
           tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
           pbE <- getPostBuild
-          artE <- getClient ^. apiArticles . articlesList . to (\f -> f
-            (Identity <$> tokDyn)
-            (constDyn . Identity $ QNone)
-            (constDyn . Identity $ QNone)
-            (constDyn . Identity $ [])
-            (Identity . pure . unUsername <$> usernameDyn)
-            (constDyn . Identity $ [])
+          artE <- Client.listArticles
+            tokDyn
+            (constDyn QNone)
+            (constDyn QNone)
+            (constDyn [])
+            (pure . unUsername <$> usernameDyn)
+            (constDyn [])
             (leftmost [pbE,void $ updated tokDyn])
-            )
-          artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)
+
+          artsDyn <- holdDyn (Articles [] 0) (fmapMaybe reqSuccess artE)
           articlesPreview artsDyn
   where
     navItem sr rDyn = elClass "li" "nav-item" . routeLinkDynClass

@@ -10,13 +10,13 @@ import Obelisk.Route          (pattern (:/), R)
 import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
 import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
-import Common.Conduit.Api.Articles.Articles (Articles (..))
-import Common.Conduit.Api.User.Account      (token)
-import Common.Route                         (FrontendRoute (..))
-import Frontend.ArticlePreview              (articlesPreview)
-import Frontend.Conduit.Client              (apiArticles, articlesList, getClient)
-import Frontend.FrontendStateT
-import Frontend.Utils                       (routeLinkClass)
+import           Common.Conduit.Api.Articles.Articles (Articles (..))
+import           Common.Conduit.Api.User.Account      (token)
+import           Common.Route                         (FrontendRoute (..))
+import           Frontend.ArticlePreview              (articlesPreview)
+import qualified Frontend.Conduit.Client              as Client
+import           Frontend.FrontendStateT
+import           Frontend.Utils                       (routeLinkClass)
 
 homePage
   :: forall t m s js
@@ -32,16 +32,16 @@ homePage
 homePage = prerender_ (text "Loading...") $ elClass "div" "home-page" $ do
   tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
   pbE <- getPostBuild
-  artE <- getClient ^. apiArticles . articlesList . to (\f -> f
-    (Identity <$> tokDyn)
-    (constDyn . Identity $ QNone)
-    (constDyn . Identity $ QNone)
-    (constDyn . Identity $ [])
-    (constDyn . Identity $ [])
-    (constDyn . Identity $ [])
+  artE <- Client.listArticles
+    tokDyn
+    (constDyn QNone)
+    (constDyn QNone)
+    (constDyn [])
+    (constDyn [])
+    (constDyn [])
     (leftmost [pbE,void $ updated tokDyn])
-    )
-  artsDyn <- holdDyn (Articles [] 0) (fmapMaybe (reqSuccess . runIdentity) artE)
+
+  artsDyn <- holdDyn (Articles [] 0) (fmapMaybe reqSuccess artE)
   elClass "div" "banner" $
     elClass "div" "container" $ do
       elClass "h1" "logo-font" $ text "conduit"

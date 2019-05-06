@@ -11,12 +11,12 @@ import qualified Data.Map               as Map
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
 import           Servant.Common.Req     (reqSuccess)
 
-import Common.Conduit.Api.Namespace         (Namespace (Namespace), unNamespace)
-import Common.Conduit.Api.Users.Credentials (Credentials (Credentials))
-import Common.Route                         (FrontendRoute (..))
-import Frontend.Conduit.Client
-import Frontend.FrontendStateT
-import Frontend.Utils                       (buttonClass)
+import           Common.Conduit.Api.Namespace         (Namespace (Namespace), unNamespace)
+import           Common.Conduit.Api.Users.Credentials (Credentials (Credentials))
+import           Common.Route                         (FrontendRoute (..))
+import qualified Frontend.Conduit.Client              as Client
+import           Frontend.FrontendStateT
+import           Frontend.Utils                       (buttonClass)
 
 login
   :: ( DomBuilder t m
@@ -71,13 +71,12 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
                 <*> passI ^. textInput_value
 
           -- Do a backend call with the Dynamic t Credentials and the Submit Click
-          resE <- getClient ^. apiUsers . usersLogin . to (\f -> f
-            (pure . pure . Namespace <$> credentials)
+          resE <- Client.login
+            (pure . Namespace <$> credentials)
             submitE
-            )
 
           -- We do some work to ignore failures and unwrap the result
-          let successE = fmapMaybe (fmap unNamespace . reqSuccess . runIdentity) $ resE
+          let successE = fmapMaybe (fmap unNamespace . reqSuccess) $ resE
 
           -- When we have a success fire off, we fire a login up the state tree
           -- This sets the JWT token into our state and local storage
