@@ -31,27 +31,39 @@ import           Common.Route                    (FrontendRoute (FrontendRoute_H
 data FrontendEvent = LogOut | LogIn Account
 makeClassyPrisms ''FrontendEvent
 
+data LoadableData e a = Loading | LoadFailed e | Loaded a
+makePrisms ''LoadableData
+
+loadableData :: m -> (e -> m) -> (a -> m) -> LoadableData e a -> m
+loadableData loading loadFailed loaded = \case
+  Loading      -> loading
+  LoadFailed e -> loadFailed e
+  Loaded     a -> loaded a
+
 data FrontendData = FrontendData
-  { _frontendDataLoggedInAccount :: Maybe Account
+  { _frontendDataLoggedInAccount :: LoadableData () (Maybe Account)
   }
 makeClassy ''FrontendData
 
 class HasLoggedInAccount s where
-  loggedInAccount :: Lens' s (Maybe Account)
+  loadableLoggedInAccount :: Getter s (LoadableData () (Maybe Account))
+
+  loggedInAccount :: Fold s Account
+  loggedInAccount = loadableLoggedInAccount . _Loaded . _Just
 
 instance HasLoggedInAccount FrontendData where
-  loggedInAccount = frontendDataLoggedInAccount
+  loadableLoggedInAccount = frontendDataLoggedInAccount
 
 initialFrontendData :: FrontendData
-initialFrontendData = FrontendData Nothing
+initialFrontendData = FrontendData Loading
 
 updateFrontendData :: FrontendEvent -> Endo FrontendData
 updateFrontendData e = Endo $ case e of
-  LogOut  -> frontendDataLoggedInAccount .~ Nothing
-  LogIn a -> frontendDataLoggedInAccount ?~ a
+  LogOut  -> frontendDataLoggedInAccount .~ Loaded Nothing
+  LogIn a -> frontendDataLoggedInAccount .~ (Loaded $ Just a)
 
-loggedInToken :: (Monoid f, HasLoggedInAccount t) => Getting f t Token
-loggedInToken = loggedInAccount . _Just . to Account.token
+loggedInToken :: HasLoggedInAccount t => Fold t Token
+loggedInToken = loggedInAccount . to Account.token
 
 newtype FrontendStateT t s m a = FrontendStateT
   { unFrontendStateT :: ReaderT (Dynamic t s) m a }
@@ -83,9 +95,6 @@ noUserWidget
      , SetRoute t (R FrontendRoute) m
      , DomBuilder t m
      , PostBuild t m
-     , MonadIO (Performable m)
-     , TriggerEvent t m
-     , PerformEvent t m
      )
   => m ()
   -> m ()
@@ -97,9 +106,6 @@ userWidget
      , SetRoute t (R FrontendRoute) m
      , DomBuilder t m
      , PostBuild t m
-     , MonadIO (Performable m)
-     , PerformEvent t m
-     , TriggerEvent t m
      )
   => (Account -> m ())
   -> m ()
@@ -116,18 +122,12 @@ withUser
   -> (Account -> m ())
   -> m ()
 withUser noUserW userW = do
-  accountDyn <- viewFrontendState loggedInAccount
-  void . dyn $ maybe noUserW userW <$> accountDyn
+  loadingAccountDyn <- viewFrontendState loadableLoggedInAccount
+  void . dyn . ffor loadingAccountDyn $ loadableData blank (const blank) (maybe noUserW userW)
 
-redirect
-  :: ( SetRoute t r m
-     , PostBuild t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , MonadIO (Performable m)
-     ) => r -> m ()
+redirect :: ( SetRoute t r m , PostBuild t m) => r -> m ()
 redirect r = do
-  pbE <- getPostBuild >>= delay 0.05
+  pbE <- getPostBuild
   setRoute $ r <$ pbE
 
 instance Monad m => HasFrontendState t s (FrontendStateT t s m) where

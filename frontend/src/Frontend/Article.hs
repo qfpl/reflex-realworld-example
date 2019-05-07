@@ -6,7 +6,7 @@ module Frontend.Article where
 import Control.Lens
 import Reflex.Dom.Core hiding (Element)
 
-import           Control.Monad.IO.Class (MonadIO)
+import           Control.Monad.Fix      (MonadFix)
 import           Data.Default           (def)
 import           Data.Foldable          (fold)
 import           Data.Functor           (void)
@@ -47,6 +47,7 @@ article
      , RouteToUrl (R FrontendRoute) m
      , PostBuild t m
      , MonadHold t m
+     , MonadFix m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      )
@@ -80,9 +81,7 @@ article = elClass "div" "article-page" $ do
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-8 offset-md-2" $ do
         -- Do the comments UI below
-        -- TODO: This was giving a bad type error with prerender stuff.
-        --comments slugDyn
-        blank
+        comments slugDyn
 
 articleMeta
   :: ( DomBuilder t m
@@ -162,19 +161,17 @@ comments
   :: forall t m s js
   .  ( DomBuilder t m
      , SetRoute t (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) (Client m)
-     , RouteToUrl (R FrontendRoute) (Client m)
+     , RouteToUrl (R FrontendRoute) m
      , PostBuild t m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      , Prerender js t m
-     , TriggerEvent t m
-     , PerformEvent t m
-     , MonadIO (Performable m)
+     , MonadFix m
+     , MonadHold t m
      )
   => Dynamic t DocumentSlug
   -> m ()
-comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
+comments slugDyn = userWidget $ \acct -> mdo
   -- Load the comments when this widget is built
   pbE <- getPostBuild
   let tokenEDyn = constDyn . pure . Account.token $ acct
@@ -196,15 +193,15 @@ comments slugDyn = userWidget $ \acct -> prerender_ (text "Loading...") $ mdo
   -- an event when they are successfully added.
   newCommentE <- elClass "form" "card comment-form" $ mdo
     commentI <- elClass "div" "card-block" $ do
-      textArea $ def
-          & textAreaConfig_attributes .~ (constDyn (Map.fromList
+      textAreaElement $ def
+          & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
             [("class","form-control")
             ,("placeholder","Write a comment")
             ,("rows","3")
-            ]))
-          & textAreaConfig_setValue .~ ("" <$ newE)
+            ]
+          & textAreaElementConfig_setValue .~ ("" <$ newE)
     let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
-          <$> commentI ^.textArea_value
+          <$> commentI ^. to _textAreaElement_value
     postE <- elClass "div" "card-footer" $ do
       buttonClass "btn btn-sm btn-primary" $ text "Post Comment"
     submitResE <- Client.createComment tokenEDyn slugEDyn createCommentDyn postE

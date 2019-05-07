@@ -7,7 +7,6 @@ import Control.Lens
 import Reflex.Dom.Core
 
 import           Control.Monad          (mfilter)
-import           Control.Monad.IO.Class (MonadIO)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map               as Map
 import           Data.Maybe             (fromMaybe)
@@ -27,12 +26,8 @@ settings
   :: ( DomBuilder t m
      , PostBuild t m
      , Prerender js t m
-     , TriggerEvent t m
-     , PerformEvent t m
-     , MonadIO (Performable m)
      , SetRoute t (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) (Client m)
-     , EventWriter t (NonEmpty FrontendEvent) (Client m)
+     , EventWriter t (NonEmpty FrontendEvent) m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      )
@@ -43,7 +38,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
     elClass "div" "row" $
       elClass "div" "col-md-6 offset-md-3 col-xs-12" $ do
         elClass "h1" "text-xs-center" $ text "Your Settings"
-        prerender_ blank $ el "form" $ do
+        el "form" $ do
           -- When this FRP network is built, we want to load the existing data
           pbE <- getPostBuild
           let tokenDyn = constDyn . pure . Account.token $ acct

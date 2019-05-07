@@ -2,7 +2,6 @@
 {-# LANGUAGE PatternSynonyms                                                               #-}
 module Frontend.Profile where
 
-import Control.Lens
 import Reflex.Dom.Core
 
 import Control.Monad.Fix      (MonadFix)
@@ -14,7 +13,6 @@ import Servant.Common.Req     (QParam (QNone), reqSuccess)
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
 import           Common.Conduit.Api.Namespace         (unNamespace)
 import qualified Common.Conduit.Api.Profiles.Profile  as Profile
-import qualified Common.Conduit.Api.User.Account      as Account
 import           Common.Route                         (FrontendRoute (..), ProfileRoute (..), Username (..))
 import           Frontend.ArticlePreview              (articlesPreview, profileImage)
 import qualified Frontend.Conduit.Client              as Client
@@ -34,19 +32,18 @@ profile
      )
   => Dynamic t Username
   -> RoutedT t (Maybe (R ProfileRoute)) m ()
-profile usernameDyn =
+profile usernameDyn = do
+  pbE <- getPostBuild
+  tokDyn <- reviewFrontendState loggedInToken
   elClass "div" "profile-page" $ do
   elClass "div" "user-info" $
     elClass "div" "container" $
       elClass "div" "row" $
         elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-          pbE <- getPostBuild
-          tokDyn <- reviewFrontendState loggedInToken
           loadResE <- Client.getProfile
             tokDyn
             (pure . unUsername <$> usernameDyn)
             (leftmost [pbE,void . updated $ usernameDyn])
-
           let loadSuccessE = fmap unNamespace . reqSuccess <$> loadResE
           void $ widgetHold (text "Loading") $ ffor loadSuccessE $
             maybe blank $ \acct -> do
@@ -67,8 +64,6 @@ profile usernameDyn =
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
 
-          tokDyn <- reviewFrontendState (loggedInAccount._Just.to Account.token)
-          pbE <- getPostBuild
           artE <- Client.listArticles
             tokDyn
             (constDyn QNone)

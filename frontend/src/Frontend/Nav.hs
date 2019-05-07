@@ -27,7 +27,7 @@ nav
   => m ()
 nav = do
   rDyn <- askRoute
-  loggedIn <- viewFrontendState loggedInAccount
+  loggedIn <- reviewFrontendState loggedInAccount
   elClass "nav" "navbar navbar-light" $
     elClass "div" "container" $ do
       routeLinkDynClass "navbar-brand" (constDyn $ FrontendRoute_Home :/ ()) $ text "conduit"

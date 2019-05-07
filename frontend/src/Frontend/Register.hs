@@ -5,7 +5,6 @@ import Control.Lens
 import Reflex.Dom.Core
 
 
-import           Control.Monad.IO.Class (MonadIO)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map               as Map
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
@@ -25,9 +24,6 @@ register
      , Prerender js t m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
-     , TriggerEvent t m
-     , PerformEvent t m
-     , MonadIO (Performable m)
      , EventWriter t (NonEmpty e) m
      , AsFrontendEvent e
      , HasFrontendState t s m

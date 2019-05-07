@@ -8,8 +8,7 @@ import Control.Lens
 import Reflex.Dom.Core hiding (Namespace)
 
 import           Control.Monad.Trans.Reader (mapReaderT)
-import           Data.Functor               (void)
-import           Data.List.NonEmpty         (NonEmpty ((:|)))
+import           Data.List.NonEmpty         (NonEmpty)
 import qualified Data.Map                   as Map
 import           Data.Monoid                (appEndo)
 import           Data.Text                  (Text)
@@ -78,10 +77,7 @@ htmlBody = mapRoutedT unravelAppState $ do
     currentUserResUpdate
       :: Event t (ReqResult () (Namespace "user" Account))
       -> RoutedAppState t (Client m) ()
-    currentUserResUpdate =
-      tellEvent
-      . fmap ((:| []) . LogIn . unNamespace)
-      . fmapMaybe reqSuccess
+    currentUserResUpdate = tellEvent . fmap (pure . maybe LogOut (LogIn . unNamespace) . reqSuccess)
 
     unravelAppState :: AppState t m () -> m ()
     unravelAppState m = mdo

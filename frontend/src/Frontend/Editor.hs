@@ -5,7 +5,6 @@ module Frontend.Editor where
 import Control.Lens
 import Reflex.Dom.Core
 
-import           Control.Monad.IO.Class (MonadIO)
 import qualified Data.Map               as Map
 import qualified Data.Set               as Set
 import           Obelisk.Route.Frontend (pattern (:/), R, SetRoute, setRoute)
@@ -28,9 +27,6 @@ editor
      , SetRoute t (R FrontendRoute) m
      , HasFrontendState t s m
      , HasLoggedInAccount s
-     , TriggerEvent t m
-     , PerformEvent t m
-     , MonadIO (Performable m)
      )
   => m ()
 editor = userWidget $ \acct -> elClass "div" "editor-page" $ do

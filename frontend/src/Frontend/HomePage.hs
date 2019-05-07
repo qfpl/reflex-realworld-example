@@ -2,7 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables                                                                     #-}
 module Frontend.HomePage where
 
-import Control.Lens
 import Reflex.Dom.Core
 
 import Control.Monad.Fix      (MonadFix)
@@ -12,7 +11,6 @@ import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
 import Servant.Common.Req     (QParam (QNone), reqSuccess)
 
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
-import           Common.Conduit.Api.User.Account      (token)
 import           Common.Route                         (FrontendRoute (..))
 import           Frontend.ArticlePreview              (articlesPreview)
 import qualified Frontend.Conduit.Client              as Client
@@ -33,7 +31,7 @@ homePage
      )
   => m ()
 homePage = elClass "div" "home-page" $ do
-  tokDyn <- reviewFrontendState (loggedInAccount._Just.to token)
+  tokDyn <- reviewFrontendState loggedInToken
   pbE <- getPostBuild
   artE <- Client.listArticles
     tokDyn
