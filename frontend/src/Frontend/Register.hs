@@ -25,7 +25,6 @@ register
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      , EventWriter t (NonEmpty e) m
-     , MonadSample t m
      , AsFrontendEvent e
      , HasFrontendState t s m
      , HasLoggedInAccount s

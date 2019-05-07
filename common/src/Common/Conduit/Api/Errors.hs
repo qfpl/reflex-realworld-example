@@ -3,7 +3,7 @@ module Common.Conduit.Api.Errors
   ( ErrorBody(..)
   ) where
 
-import Data.Aeson           (ToJSON, FromJSON, encode)
+import Data.Aeson           (ToJSON, FromJSON)
 import Data.Text            (Text)
 import GHC.Generics         (Generic)
 

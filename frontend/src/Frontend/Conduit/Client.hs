@@ -13,7 +13,7 @@ import Data.Text.Lazy.Encoding (encodeUtf8)
 import Reflex.Dom.Xhr          (xhrResponse_responseText, xhrResponse_status)
 import Servant.API             (NoContent)
 import Servant.Common.Req      (QParam)
-import Servant.Reflex.Multi    (ReqResult (ResponseFailure), reqFailure, reqSuccess)
+import Servant.Reflex.Multi    (ReqResult (ResponseFailure), reqSuccess)
 
 import           Common.Conduit.Api.Articles.Article       (Article)
 import           Common.Conduit.Api.Articles.Articles      (Articles)
@@ -21,7 +21,6 @@ import           Common.Conduit.Api.Articles.Attributes    (CreateArticle)
 import           Common.Conduit.Api.Articles.Comment       (Comment)
 import           Common.Conduit.Api.Articles.CreateComment (CreateComment)
 import           Common.Conduit.Api.Errors                 (ErrorBody)
-import qualified Common.Conduit.Api.Errors                 as ApiErrors
 import           Common.Conduit.Api.Namespace              (Namespace)
 import           Common.Conduit.Api.Profiles               (Profile)
 import           Common.Conduit.Api.User.Account           (Account, Token)
@@ -187,7 +186,7 @@ emptyClientRes :: Reflex t => (Event t a, Event t ClientError, Dynamic t Bool)
 emptyClientRes = (never, never, constDyn False)
 
 reqClientError :: ReqResult tag a -> Maybe ClientError
-reqClientError (ResponseFailure tag msg xhrR) = Just $ case view xhrResponse_status xhrR of
+reqClientError (ResponseFailure _ msg xhrR) = Just $ case view xhrResponse_status xhrR of
   401 -> Unauthorised
   403 -> Forbidden
   404 -> NotFound

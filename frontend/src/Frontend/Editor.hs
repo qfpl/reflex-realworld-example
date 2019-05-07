@@ -25,7 +25,6 @@ editor
      , PostBuild t m
      , Prerender js t m
      , SetRoute t (R FrontendRoute) m
-     , MonadSample t m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      )

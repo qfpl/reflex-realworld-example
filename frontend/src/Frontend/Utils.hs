@@ -32,18 +32,16 @@ pathSegmentSubRoute f = do
 
 buttonClass
   :: forall t m a
-  . (DomBuilder t m, MonadSample t m, PostBuild t m)
+  . (DomBuilder t m, PostBuild t m)
   => Text
   -> Dynamic t Bool
   -> m a
   -> m (Event t ())
 buttonClass cls disabledDyn m = do
   let attrsDyn = ((("class" =: cls) <>) . (bool (Map.empty) ("disabled" =: ""))) <$> disabledDyn
-  attrsInit <- sample . current $ attrsDyn
-  modAttrs <- dynamicAttributesToModifyAttributesWithInitial attrsInit attrsDyn
+  modAttrs <- dynamicAttributesToModifyAttributes (traceDynWith show attrsDyn)
   let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
         & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)
-        & elementConfig_initialAttributes .~ attrsInit
         & elementConfig_modifyAttributes .~ modAttrs
   (e, _) <- element "button" cfg m
   pure $ domEvent Click e

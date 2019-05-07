@@ -46,7 +46,7 @@ login = noUserWidget $ elClass "div" "auth-page" $ do
         errorDyn <- holdDyn Nothing $ leftmost [Nothing <$ submitE, Just <$> errorE]
 
         elClass "ul" "error-messages" $
-          void $ dyn $ ffor errorDyn $ traverse_ $ \err ->
+          void $ dyn $ ffor errorDyn $ traverse_ $ \_ ->
             el "li" (text "Login Failed")
 
         -- A form for two inputs
