@@ -7,17 +7,14 @@ module Frontend where
 import Control.Lens
 import Reflex.Dom.Core hiding (Namespace)
 
-import           Control.Monad.Trans.Reader (mapReaderT)
-import           Data.List.NonEmpty         (NonEmpty)
-import qualified Data.Map                   as Map
-import           Data.Monoid                (appEndo)
-import           Data.Text                  (Text)
-import           Obelisk.Frontend           (Frontend (Frontend), ObeliskWidget)
-import           Obelisk.Route.Frontend     (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, mapRoutedT,
-                                             subRoute_)
-import           Reflex.Dom.Storage.Base    (StorageT (..), StorageType (LocalStorage), runStorageT)
-import           Reflex.Dom.Storage.Class   (askStorageTag, pdmInsert, pdmRemove, tellStorage)
-import           Servant.Common.Req         (ReqResult, reqSuccess)
+import Control.Monad.Trans.Reader (mapReaderT)
+import Data.List.NonEmpty         (NonEmpty)
+import Data.Monoid                (appEndo)
+import Obelisk.Frontend           (Frontend (Frontend), ObeliskWidget)
+import Obelisk.Route.Frontend     (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, mapRoutedT, subRoute_)
+import Reflex.Dom.Storage.Base    (StorageT (..), StorageType (LocalStorage), runStorageT)
+import Reflex.Dom.Storage.Class   (askStorageTag, pdmInsert, pdmRemove, tellStorage)
+import Servant.Common.Req         (ReqResult, reqSuccess)
 
 
 import           Common.Conduit.Api.Namespace    (Namespace, unNamespace)
@@ -28,6 +25,7 @@ import           Frontend.Article                (article)
 import qualified Frontend.Conduit.Client         as Client
 import           Frontend.Editor                 (editor)
 import           Frontend.FrontendStateT
+import           Frontend.Head                   (htmlHead)
 import           Frontend.HomePage               (homePage)
 import           Frontend.LocalStorageKey        (LocalStorageTag (..))
 import           Frontend.Login                  (login)
@@ -40,16 +38,6 @@ import           Frontend.Utils                  (pathSegmentSubRoute, routeLink
 mapStorageT :: (forall x. m x -> n x) -> StorageT t k m a -> StorageT t k n a
 mapStorageT f = StorageT . mapReaderT (mapEventWriterT f) . unStorageT
 
-styleLink :: DomBuilder t m => Text -> m ()
-styleLink href =
-  elAttr "link" (Map.fromList [("href",href),("rel","stylesheet"),("type","text/css")]) blank
-
-htmlHead :: (DomBuilder t m) => m ()
-htmlHead = do
-  el "title" $ text "Conduit"
-  styleLink "//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css"
-  styleLink "//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
-  styleLink "//demo.productionready.io/main.css"
 
 type RoutedAppState t m = RoutedT t (R FrontendRoute) (AppState t m)
 
