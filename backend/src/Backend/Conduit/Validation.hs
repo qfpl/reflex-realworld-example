@@ -5,13 +5,12 @@ module Backend.Conduit.Validation
   ) where
 
 import           Data.Functor.Compose (Compose (Compose))
-import           Data.Map             (Map)
 import qualified Data.Map             as Map
 import           Data.Text            (Text)
 import qualified Data.Text            as Text
 import           Data.Validation      (Validation (Failure, Success))
 
-type ValidationErrors = Map Text [Text]
+import Common.Conduit.Api.Validation (ValidationErrors)
 
 requiredText
   :: (Applicative m)

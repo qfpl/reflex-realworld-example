@@ -50,7 +50,7 @@ profile usernameDyn = do
               profileImage "user-img" (constDyn $ Profile.image acct)
               el "h4" $ text $ Profile.username acct
               el "p" $ text $ Profile.bio acct
-              _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" $ do
+              _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" (constDyn False) $ do
                 elClass "i" "ion-plus-round" blank
                 text " Follow "
                 text $ Profile.username acct

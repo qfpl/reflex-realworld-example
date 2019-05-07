@@ -103,7 +103,7 @@ articleMeta art = elClass "div" "article-meta" $ do
   where
     actions profile = do
       -- TODO : Do something with this click
-      _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" $ do
+      _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" (constDyn False) $ do
         elClass "i" "ion-plus-round" blank
         text " Follow "
         text (Profile.username profile)
@@ -113,7 +113,7 @@ articleMeta art = elClass "div" "article-meta" $ do
         text ")"
       -- TODO : Do something with this click
       text " "
-      _ <- buttonClass "btn btn-sm btn-outline-primary action-btn" $ do
+      _ <- buttonClass "btn btn-sm btn-outline-primary action-btn" (constDyn False) $ do
         elClass "i" "ion-heart" blank
         text " Favourite Post ("
         elClass "span" "counter" $ text $ showText (Article.favoritesCount art)
@@ -203,7 +203,7 @@ comments slugDyn = userWidget $ \acct -> mdo
     let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
           <$> commentI ^. to _textAreaElement_value
     postE <- elClass "div" "card-footer" $ do
-      buttonClass "btn btn-sm btn-primary" $ text "Post Comment"
+      buttonClass "btn btn-sm btn-primary" (constDyn False) $ text "Post Comment"
     submitResE <- Client.createComment tokenEDyn slugEDyn createCommentDyn postE
     let newE = fmapMaybe (fmap unNamespace . reqSuccess) submitResE
     pure newE

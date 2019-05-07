@@ -25,6 +25,7 @@ register
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      , EventWriter t (NonEmpty e) m
+     , MonadSample t m
      , AsFrontendEvent e
      , HasFrontendState t s m
      , HasLoggedInAccount s
@@ -59,7 +60,7 @@ register = noUserWidget $ elClass "div" "auth-page" $ do
                 , ("placeholder","Password")
                 , ("type","password")
                 ]
-          submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Sign Up"
+          submitE <- buttonClass "btn btn-lg btn-primary pull-xs-right" (constDyn False) $ text "Sign Up"
           let registrant = Registrant
                 <$> usernameI ^. to _inputElement_value
                 <*> emailI ^. to _inputElement_value

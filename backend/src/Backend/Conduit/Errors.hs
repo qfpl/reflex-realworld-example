@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE OverloadedStrings, StandaloneDeriving, DeriveGeneric, DeriveAnyClass #-}
 module Backend.Conduit.Errors
   ( ErrorBody(..)
   , ConduitErrorsT
@@ -14,21 +14,15 @@ module Backend.Conduit.Errors
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Aeson           (ToJSON, encode)
 import Data.Text            (Text, pack)
-import GHC.Generics         (Generic)
 import Servant              (ServantErr (..), err401, err403, err404, err500, errBody, throwError)
 import Snap.Core            (MonadSnap)
+
+import Common.Conduit.Api.Errors
 
 type ConduitErrorsT m = ExceptT ServantErr m
 
 runConduitErrorsT :: MonadSnap m => ConduitErrorsT m a -> m a
 runConduitErrorsT = (either throwError pure  =<<) . runExceptT
-
-data ErrorBody errors = ErrorBody
-  { message :: Text
-  , errors  :: Maybe errors
-  } deriving (Generic)
-
-deriving instance ToJSON errors => ToJSON (ErrorBody errors)
 
 notAuthorized :: ServantErr
 notAuthorized =

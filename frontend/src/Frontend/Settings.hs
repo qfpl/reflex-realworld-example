@@ -27,6 +27,7 @@ settings
      , PostBuild t m
      , Prerender js t m
      , SetRoute t (R FrontendRoute) m
+     , MonadSample t m
      , EventWriter t (NonEmpty FrontendEvent) m
      , HasFrontendState t s m
      , HasLoggedInAccount s
@@ -87,7 +88,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
                   ,("placeholder","Password")
                   ,("type","password")
                   ]
-            updateE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Update Settings"
+            updateE <- buttonClass "btn btn-lg btn-primary pull-xs-right" (constDyn False) $ text "Update Settings"
             -- Here we dont want to update the password if it was left blank
             let updateDyn = UpdateUser
                   <$> (mfilter (not . Text.null) . Just <$> passwordI ^. to _inputElement_value)
@@ -111,7 +112,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
 
           el "hr" blank
           -- Add a logout button that dispatches a logout event.
-          logoutClick <- buttonClass "btn btn-outline-danger" $ text "Logout"
+          logoutClick <- buttonClass "btn btn-outline-danger" (constDyn False) $ text "Logout"
           tellEvent $ pure LogOut <$ logoutClick
           -- And redirect to home.
           setRoute $ FrontendRoute_Home :/ () <$ logoutClick

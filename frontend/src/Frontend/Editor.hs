@@ -25,6 +25,7 @@ editor
      , PostBuild t m
      , Prerender js t m
      , SetRoute t (R FrontendRoute) m
+     , MonadSample t m
      , HasFrontendState t s m
      , HasLoggedInAccount s
      )
@@ -54,7 +55,7 @@ editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
                   ,("placeholder","Write your article (in markdown)")
                   ,("rows","8")
                   ])
-            publishE <- buttonClass "btn btn-lg btn-primary pull-xs-right" $ text "Publish Article"
+            publishE <- buttonClass "btn btn-lg btn-primary pull-xs-right" (constDyn False) $ text "Publish Article"
             let createArticle :: Dynamic t CreateArticle = ArticleAttributes
                   <$> titleI ^. to _inputElement_value
                   <*> descI  ^. to _inputElement_value

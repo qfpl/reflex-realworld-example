@@ -6,6 +6,7 @@ import Reflex.Dom.Core
 
 import           Control.Monad          (mfilter)
 import           Control.Monad.Trans    (lift)
+import           Data.Bool              (bool)
 import qualified Data.Map               as Map
 import           Data.Maybe             (fromMaybe)
 import           Data.Proxy             (Proxy (Proxy))
@@ -29,11 +30,21 @@ pathSegmentSubRoute f = do
   rDyn <- askRoute
   lift $ runRoutedT (f (Prelude.fst <$> rDyn)) (Prelude.snd <$> rDyn)
 
-buttonClass :: forall t m a. (DomBuilder t m) => Text -> m a -> m (Event t ())
-buttonClass c m = do
+buttonClass
+  :: forall t m a
+  . (DomBuilder t m, MonadSample t m, PostBuild t m)
+  => Text
+  -> Dynamic t Bool
+  -> m a
+  -> m (Event t ())
+buttonClass cls disabledDyn m = do
+  let attrsDyn = ((("class" =: cls) <>) . (bool (Map.empty) ("disabled" =: ""))) <$> disabledDyn
+  attrsInit <- sample . current $ attrsDyn
+  modAttrs <- dynamicAttributesToModifyAttributesWithInitial attrsInit attrsDyn
   let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
         & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)
-        & elementConfig_initialAttributes .~ ("class" =: c)
+        & elementConfig_initialAttributes .~ attrsInit
+        & elementConfig_modifyAttributes .~ modAttrs
   (e, _) <- element "button" cfg m
   pure $ domEvent Click e
 

@@ -5,32 +5,54 @@ import Control.Lens
 import Reflex
 import Reflex.Dom.Core hiding (Namespace)
 
-import Data.Functor.Identity       (Identity (..))
-import Data.Text                   (Text)
-import Servant.API                 (NoContent)
-import Servant.Common.Req          (QParam)
-import Servant.Reflex.Multi        (ReqResult)
+import Data.Aeson              (decode)
+import Data.Functor.Identity   (Identity (..))
+import Data.Text               (Text)
+import Data.Text.Lazy          (fromStrict)
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Reflex.Dom.Xhr          (xhrResponse_responseText, xhrResponse_status)
+import Servant.API             (NoContent)
+import Servant.Common.Req      (QParam)
+import Servant.Reflex.Multi    (ReqResult (ResponseFailure), reqFailure, reqSuccess)
 
-import Common.Conduit.Api.Articles.Article       (Article)
-import Common.Conduit.Api.Articles.Articles      (Articles)
-import Common.Conduit.Api.Articles.Attributes    (CreateArticle)
-import Common.Conduit.Api.Articles.Comment       (Comment)
-import Common.Conduit.Api.Articles.CreateComment (CreateComment)
-import Common.Conduit.Api.Namespace              (Namespace)
-import Common.Conduit.Api.Profiles               (Profile)
-import Common.Conduit.Api.User.Account           (Account, Token)
-import Common.Conduit.Api.User.Update            (UpdateUser)
-import Common.Conduit.Api.Users.Credentials      (Credentials)
-import Common.Conduit.Api.Users.Registrant       (Registrant)
-import Frontend.Conduit.Client.Internal
+import           Common.Conduit.Api.Articles.Article       (Article)
+import           Common.Conduit.Api.Articles.Articles      (Articles)
+import           Common.Conduit.Api.Articles.Attributes    (CreateArticle)
+import           Common.Conduit.Api.Articles.Comment       (Comment)
+import           Common.Conduit.Api.Articles.CreateComment (CreateComment)
+import           Common.Conduit.Api.Errors                 (ErrorBody)
+import qualified Common.Conduit.Api.Errors                 as ApiErrors
+import           Common.Conduit.Api.Namespace              (Namespace)
+import           Common.Conduit.Api.Profiles               (Profile)
+import           Common.Conduit.Api.User.Account           (Account, Token)
+import           Common.Conduit.Api.User.Update            (UpdateUser)
+import           Common.Conduit.Api.Users.Credentials      (Credentials)
+import           Common.Conduit.Api.Users.Registrant       (Registrant)
+import           Common.Conduit.Api.Validation             (ValidationErrors)
+import           Frontend.Conduit.Client.Internal
+
+type ClientRes t a = (Event t a, Event t ClientError, Dynamic t Bool)
+
+data ClientError
+  = Forbidden
+  | NotFound
+  | Unauthorised
+  | FailedValidation (Maybe (ErrorBody ValidationErrors))
+  | OtherError Word Text
+  deriving (Show)
 
 login
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Either Text (Namespace "user" Credentials))
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "user" Account)))
-login credDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiUsers . usersLogin . fillIdF credDyn . fill submitE
+  -> m (ClientRes t (Namespace "user" Account))
+login credDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiUsers . usersLogin . fillIdF credDyn . fill submitE
+  let successE = fmapMaybe reqSuccess resE
+  let errorE   = fmapMaybe reqClientError resE
+  submittingDyn <- holdDyn False $ leftmost [True <$ submitE, False <$ errorE, False <$ successE]
+
+  pure (successE, errorE, submittingDyn)
 
 register
   :: (Reflex t, Applicative m, Prerender js t m)
@@ -160,6 +182,28 @@ deleteComment tokenDyn slugDyn commentIdDyn submitE = fmap switchDyn $ prerender
 -- TODO GetTags
 
 -- Helpers ---------------------------------------------------------------------------------------------------
+
+emptyClientRes :: Reflex t => (Event t a, Event t ClientError, Dynamic t Bool)
+emptyClientRes = (never, never, constDyn False)
+
+reqClientError :: ReqResult tag a -> Maybe ClientError
+reqClientError (ResponseFailure tag msg xhrR) = Just $ case view xhrResponse_status xhrR of
+  401 -> Unauthorised
+  403 -> Forbidden
+  404 -> NotFound
+  422 -> FailedValidation (xhrR ^? xhrResponse_responseText . _Just . to fromStrict . to encodeUtf8 . to decode . _Just)
+  w   -> OtherError w msg
+reqClientError _                              = Nothing
+
+switchClientRes
+  :: Reflex t
+  => Dynamic t (Event t a, Event t b, Dynamic t d)
+  -> (Event t a, Event t b, Dynamic t d)
+switchClientRes d =
+  ( switchDyn . fmap (^. _1) $ d
+  , switchDyn . fmap (^. _2) $ d
+  , d >>= (^. _3)
+  )
 
 unIdF :: (Reflex t, Functor m) => m (Event t (Identity a)) -> m (Event t a)
 unIdF = fmap (fmap runIdentity)
