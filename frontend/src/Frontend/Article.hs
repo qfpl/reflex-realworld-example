@@ -6,6 +6,8 @@ module Frontend.Article where
 import Control.Lens
 import Reflex.Dom.Core hiding (Element)
 
+import           Control.Applicative    (liftA2)
+import           Control.Monad          (mfilter)
 import           Control.Monad.Fix      (MonadFix)
 import           Data.Default           (def)
 import           Data.Foldable          (fold)
@@ -58,7 +60,7 @@ article = elClass "div" "article-page" $ do
   pbE <- getPostBuild
   tokDyn <- reviewFrontendState loggedInToken
 
-  loadResE <- Client.getArticle tokDyn (pure . unDocumentSlug <$> slugDyn) pbE
+  loadResE <- Client.getArticle tokDyn (pure . unDocumentSlug <$> slugDyn) $ pbE <> (void $ updated tokDyn)
 
   -- While we are loading, we dont have an article
   -- The types are honest about this.
@@ -171,13 +173,15 @@ comments
      )
   => Dynamic t DocumentSlug
   -> m ()
-comments slugDyn = userWidget $ \acct -> mdo
+comments slugDyn = mdo
   -- Load the comments when this widget is built
   pbE <- getPostBuild
-  let tokenEDyn = constDyn . pure . Account.token $ acct
-  let slugEDyn  = pure . unDocumentSlug <$> slugDyn
-
-  loadResE <- Client.getComments tokenEDyn slugEDyn (leftmost [pbE, void $ updated slugEDyn])
+  accountDyn <- reviewFrontendState loggedInAccount
+  let tokenDyn = fmap Account.token <$> accountDyn
+  loadResE <- Client.getComments
+    tokenDyn
+    (Right . unDocumentSlug <$> slugDyn)
+    (leftmost [pbE, void $ updated slugDyn, void $ updated tokenDyn ])
   let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
   -- Turn it into a map so that we have IDs for each comment
   let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
@@ -189,25 +193,8 @@ comments slugDyn = userWidget $ \acct -> mdo
     , ( foldMap (Endo . Map.delete) . Map.keys ) <$> deleteComment
     ]
 
-  -- Make a form that will add a comment with the backend and return
-  -- an event when they are successfully added.
-  newCommentE <- elClass "form" "card comment-form" $ mdo
-    commentI <- elClass "div" "card-block" $ do
-      textAreaElement $ def
-          & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
-            [("class","form-control")
-            ,("placeholder","Write a comment")
-            ,("rows","3")
-            ]
-          & textAreaElementConfig_setValue .~ ("" <$ newE)
-    let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
-          <$> commentI ^. to _textAreaElement_value
-    postE <- elClass "div" "card-footer" $ do
-      buttonClass "btn btn-sm btn-primary" (constDyn False) $ text "Post Comment"
-    submitResE <- Client.createComment tokenEDyn slugEDyn createCommentDyn postE
-    let newE = fmapMaybe (fmap unNamespace . reqSuccess) submitResE
-    pure newE
-
+  newEE <- dyn $ maybe (pure never) addCommentWidget <$> tokenDyn
+  newCommentE <- switchHold never newEE
   -- This takes the Map Int Comment and displays them all
   deleteComment :: Event t (Map.Map Int ()) <- listViewWithKey commentsMapDyn $ \cId commentDupeDyn -> do
     -- But we have to filter out duplicate updates to prevent
@@ -225,9 +212,45 @@ comments slugDyn = userWidget $ \acct -> mdo
         text " "
         routeLinkDynClass "comment-author" authorRouteDyn $ dynText $ Profile.username <$> profileDyn
         elClass "span" "date-posted" $ display $ Comment.createdAt <$> commentDyn
-        deleteClickE <- elClass "span" "mod-options" $ do
-          (trashElt,_) <- elClass' "i" "ion-trash-a" blank
-          pure $ domEvent Click trashElt
-        deleteResE <- Client.deleteComment tokenEDyn slugEDyn (constDyn . pure $ cId) deleteClickE
-        pure $ fmapMaybe (void . reqSuccess) deleteResE
+        deleteEE <- dyn $
+          liftA2
+            (\p -> maybe (pure never) (deleteButton cId)
+              . mfilter (((Profile.username p) ==). Account.username)
+            )
+            profileDyn
+            accountDyn
+        switchHold never deleteEE
   pure ()
+  where
+    addCommentWidget token = do
+      -- Make a form that will add a comment with the backend and return
+      -- an event when they are successfully added.
+      elClass "form" "card comment-form" $ mdo
+        commentI <- elClass "div" "card-block" $ do
+          textAreaElement $ def
+              & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
+                [("class","form-control")
+                ,("placeholder","Write a comment")
+                ,("rows","3")
+                ]
+              & textAreaElementConfig_setValue .~ ("" <$ newE)
+        let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
+              <$> commentI ^. to _textAreaElement_value
+        postE <- elClass "div" "card-footer" $ do
+          buttonClass "btn btn-sm btn-primary" (constDyn False) $ text "Post Comment"
+        submitResE <- Client.createComment
+          (constDyn . Just $ token)
+          (Right . unDocumentSlug <$> slugDyn)
+          createCommentDyn postE
+        let newE = fmapMaybe (fmap unNamespace . reqSuccess) submitResE
+        pure newE
+    deleteButton cId account = do
+      deleteClickE <- elClass "span" "mod-options" $ do
+        (trashElt,_) <- elClass' "i" "ion-trash-a" blank
+        pure $ domEvent Click trashElt
+      deleteResE <- Client.deleteComment
+        (constDyn . Just . Account.token $ account)
+        (Right . unDocumentSlug <$> slugDyn)
+        (constDyn . Right $ cId)
+        deleteClickE
+      pure $ fmapMaybe (void . reqSuccess) deleteResE

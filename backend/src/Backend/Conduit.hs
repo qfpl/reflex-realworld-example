@@ -133,9 +133,9 @@ articlesServer = listArticlesServer :<|> createArticleServer :<|> articleServer
 
         listCommentsServer = runConduitErrorsT $ do
           runDatabase $ do
-            currUser    <- loadAuthorizedUser authRes
+            currUser    <- optionallyLoadAuthorizedUser authRes
             _           <- loadArticle
-            Namespace <$> DBComments.forArticle (Just $ primaryKey currUser) slug
+            Namespace <$> DBComments.forArticle (primaryKey <$> currUser) slug
 
 
         createCommentServer (Namespace cc) = runConduitErrorsT $ do
