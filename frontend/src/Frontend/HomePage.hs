@@ -8,7 +8,7 @@ import Control.Monad.Fix      (MonadFix)
 import Data.Functor           (void)
 import Obelisk.Route          (pattern (:/), R)
 import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
-import Servant.Common.Req     (QParam (QNone), reqSuccess)
+import Servant.Common.Req     (QParam (QNone))
 
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
 import           Common.Route                         (FrontendRoute (..))
@@ -33,7 +33,7 @@ homePage
 homePage = elClass "div" "home-page" $ do
   tokDyn <- reviewFrontendState loggedInToken
   pbE <- getPostBuild
-  artE <- Client.listArticles
+  (loadArtsE,_,_) <- Client.listArticles
     tokDyn
     (constDyn QNone)
     (constDyn QNone)
@@ -42,7 +42,7 @@ homePage = elClass "div" "home-page" $ do
     (constDyn [])
     (leftmost [pbE,void $ updated tokDyn])
 
-  artsDyn <- holdDyn (Articles [] 0) (fmapMaybe reqSuccess artE)
+  artsDyn <- holdDyn (Articles [] 0) loadArtsE
   elClass "div" "banner" $
     elClass "div" "container" $ do
       elClass "h1" "logo-font" $ text "conduit"

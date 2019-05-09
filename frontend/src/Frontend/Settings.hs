@@ -12,7 +12,6 @@ import qualified Data.Map               as Map
 import           Data.Maybe             (fromMaybe)
 import qualified Data.Text              as Text
 import           Obelisk.Route.Frontend (pattern (:/), R, SetRoute, setRoute)
-import           Servant.Common.Req     (reqSuccess)
 
 import           Common.Conduit.Api.Namespace    (Namespace (Namespace), unNamespace)
 import qualified Common.Conduit.Api.User.Account as Account
@@ -43,10 +42,9 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
           pbE <- getPostBuild
           let tokenDyn = constDyn . pure . Account.token $ acct
           -- The only input is the JWT token that we load from the FrontendState
-          loadResE <- Client.getCurrentUser tokenDyn pbE
+          (loadSuccessE,_,_) <- Client.getCurrentUser tokenDyn pbE
+          let loadAccountE = unNamespace <$> loadSuccessE
 
-          -- Again, we throw away errors for now. We should fix this.
-          let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
           el "fieldset" $ do
             urlI <- elClass "fieldset" "form-group" $
               inputElement $ def
@@ -55,14 +53,14 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
                   ,("placeholder","URL of profile picture")
                   ]
                 -- Note that we set the form val from AJAX returned data
-                & inputElementConfig_setValue .~ (fromMaybe "" . Account.image <$> loadSuccessE)
+                & inputElementConfig_setValue .~ (fromMaybe "" . Account.image <$> loadAccountE)
             usernameI <- elClass "fieldset" "form-group" $
               inputElement $ def
                 & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
                   [("class","form-control")
                   ,("placeholder","Your name")
                   ]
-                & inputElementConfig_setValue .~ (Account.username <$> loadSuccessE)
+                & inputElementConfig_setValue .~ (Account.username <$> loadAccountE)
             bioI <- elClass "fieldset" "form-group" $
               textAreaElement $ def
                 & textAreaElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
@@ -70,7 +68,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
                   ,("placeholder","Short bio about you")
                   ,("rows","8")
                   ]
-                & textAreaElementConfig_setValue .~ (Account.bio <$> loadSuccessE)
+                & textAreaElementConfig_setValue .~ (Account.bio <$> loadAccountE)
 
             emailI <- elClass "fieldset" "form-group" $
               inputElement $ def
@@ -79,7 +77,7 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
                   ,("placeholder","Email")
                   ,("type","input")
                   ]
-                & inputElementConfig_setValue .~ (Account.email <$> loadSuccessE)
+                & inputElementConfig_setValue .~ (Account.email <$> loadAccountE)
             passwordI <- elClass "fieldset" "form-group" $
               inputElement $ def
                 & inputElementConfig_elementConfig.elementConfig_initialAttributes .~ Map.fromList
@@ -98,15 +96,12 @@ settings = userWidget $ \acct -> elClass "div" "settings-page" $ do
 
             -- Make the backend call when the submit button is clicked
             -- and we have a valid UpdateUser
-            updateResE <- Client.updateCurrentUser tokenDyn (pure . Namespace <$> updateDyn) updateE
-
-            -- More throwing away errors
-            let updateSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) updateResE
+            (updateSuccessE,_,_) <- Client.updateCurrentUser tokenDyn (pure . Namespace <$> updateDyn) updateE
 
             -- Once we have updated successfully, we redirect to the profile page.
             setRoute $
               (\newA ->
-                FrontendRoute_Profile :/ (Username $ Account.username newA, Nothing)
+                FrontendRoute_Profile :/ (Username $ Account.username (unNamespace newA), Nothing)
               ) <$> updateSuccessE
 
           el "hr" blank

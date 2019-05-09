@@ -8,7 +8,6 @@ import Reflex.Dom.Core
 import qualified Data.Map               as Map
 import qualified Data.Set               as Set
 import           Obelisk.Route.Frontend (pattern (:/), R, SetRoute, setRoute)
-import           Servant.Common.Req     (reqSuccess)
 
 import qualified Common.Conduit.Api.Articles.Article    as Article
 import           Common.Conduit.Api.Articles.Attributes (ArticleAttributes (..), CreateArticle)
@@ -60,12 +59,11 @@ editor = userWidget $ \acct -> elClass "div" "editor-page" $ do
                   <*> descI  ^. to _inputElement_value
                   <*> bodyI  ^. to _textAreaElement_value
                   <*> constDyn Set.empty
-            resE <- Client.createArticle
+            (successE,_,_) <- Client.createArticle
               (constDyn . Just $ Account.token acct)
               (pure . Namespace <$> createArticle)
               publishE
 
-            let successE = fmapMaybe reqSuccess resE
             setRoute $
               (\a -> FrontendRoute_Article :/ (DocumentSlug (Article.slug a)))
               . unNamespace

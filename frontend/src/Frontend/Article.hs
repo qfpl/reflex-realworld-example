@@ -22,7 +22,6 @@ import           GHCJS.DOM.Element      (setInnerHTML)
 import           GHCJS.DOM.Types        (liftJSM)
 import qualified Lucid                  as L
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, Routed, SetRoute, askRoute, routeLink)
-import           Servant.Common.Req     (reqSuccess)
 import qualified Text.MMark             as MMark
 
 
@@ -60,13 +59,9 @@ article = elClass "div" "article-page" $ do
   pbE <- getPostBuild
   tokDyn <- reviewFrontendState loggedInToken
 
-  loadResE <- Client.getArticle tokDyn (pure . unDocumentSlug <$> slugDyn) $ pbE <> (void $ updated tokDyn)
+  (successE,_,_) <- Client.getArticle tokDyn (pure . unDocumentSlug <$> slugDyn) $ pbE <> (void $ updated tokDyn)
 
-  -- While we are loading, we dont have an article
-  -- The types are honest about this.
-  let loadSuccessE :: Event t (Maybe Article.Article) = fmap unNamespace . reqSuccess <$> loadResE
-
-  articleDyn <- holdDyn Nothing loadSuccessE
+  articleDyn <- holdDyn Nothing $ Just . unNamespace <$> successE
 
   elClass "div" "banner" $
     elClass "div" "container" $ do
@@ -178,13 +173,13 @@ comments slugDyn = mdo
   pbE <- getPostBuild
   accountDyn <- reviewFrontendState loggedInAccount
   let tokenDyn = fmap Account.token <$> accountDyn
-  loadResE <- Client.getComments
+  (successE,_,_) <- Client.getComments
     tokenDyn
     (Right . unDocumentSlug <$> slugDyn)
     (leftmost [pbE, void $ updated slugDyn, void $ updated tokenDyn ])
-  let loadSuccessE = fmapMaybe (fmap unNamespace . reqSuccess) loadResE
+
   -- Turn it into a map so that we have IDs for each comment
-  let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) <$> loadSuccessE
+  let loadedMapE   = Map.fromList . (fmap (\c -> (Comment.id c, c))) . unNamespace <$> successE
 
   -- Our state actually includes the AJAX load and future comment adds
   commentsMapDyn <- foldDyn appEndo Map.empty $ fold
@@ -233,24 +228,23 @@ comments slugDyn = mdo
                 ,("placeholder","Write a comment")
                 ,("rows","3")
                 ]
-              & textAreaElementConfig_setValue .~ ("" <$ newE)
+              & textAreaElementConfig_setValue .~ ("" <$ submitSuccessE)
         let createCommentDyn = Right . Namespace <$> CreateComment.CreateComment
               <$> commentI ^. to _textAreaElement_value
         postE <- elClass "div" "card-footer" $ do
           buttonClass "btn btn-sm btn-primary" (constDyn False) $ text "Post Comment"
-        submitResE <- Client.createComment
+        (submitSuccessE,_,_) <- Client.createComment
           (constDyn . Just $ token)
           (Right . unDocumentSlug <$> slugDyn)
           createCommentDyn postE
-        let newE = fmapMaybe (fmap unNamespace . reqSuccess) submitResE
-        pure newE
+        pure (unNamespace <$> submitSuccessE)
     deleteButton cId account = do
       deleteClickE <- elClass "span" "mod-options" $ do
         (trashElt,_) <- elClass' "i" "ion-trash-a" blank
         pure $ domEvent Click trashElt
-      deleteResE <- Client.deleteComment
+      (deleteSuccessE,_,_) <- Client.deleteComment
         (constDyn . Just . Account.token $ account)
         (Right . unDocumentSlug <$> slugDyn)
         (constDyn . Right $ cId)
         deleteClickE
-      pure $ fmapMaybe (void . reqSuccess) deleteResE
+      pure (void deleteSuccessE)

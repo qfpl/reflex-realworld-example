@@ -8,7 +8,6 @@ import Reflex.Dom.Core
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map               as Map
 import           Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, SetRoute, routeLink)
-import           Servant.Common.Req     (reqSuccess)
 
 import           Common.Conduit.Api.Namespace        (Namespace (Namespace), unNamespace)
 import           Common.Conduit.Api.Users.Registrant (Registrant (Registrant))
@@ -64,7 +63,7 @@ register = noUserWidget $ elClass "div" "auth-page" $ do
                 <$> usernameI ^. to _inputElement_value
                 <*> emailI ^. to _inputElement_value
                 <*> passI ^. to _inputElement_value
-          resE <- Client.register (pure . Namespace <$> registrant) submitE
-          tellEvent (fmap (pure . (_LogIn #) . unNamespace) . fmapMaybe reqSuccess $ resE)
+          (successE,_,_) <- Client.register (pure . Namespace <$> registrant) submitE
+          tellEvent (fmap (pure . (_LogIn #) . unNamespace) $ successE)
           pure ()
   pure ()

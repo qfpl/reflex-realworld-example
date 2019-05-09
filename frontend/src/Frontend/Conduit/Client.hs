@@ -47,45 +47,45 @@ login
   -> m (ClientRes t (Namespace "user" Account))
 login credDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
   resE <- unIdF $ getClient ^. apiUsers . usersLogin . fillIdF credDyn . fill submitE
-  let successE = fmapMaybe reqSuccess resE
-  let errorE   = fmapMaybe reqClientError resE
-  submittingDyn <- holdDyn False $ leftmost [True <$ submitE, False <$ errorE, False <$ successE]
-
-  pure (successE, errorE, submittingDyn)
+  wireClientRes submitE resE
 
 register
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Either Text (Namespace "user" Registrant))
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "user" Account)))
-register regDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiUsers . usersRegister . fillIdF regDyn . fill submitE
+  -> m (ClientRes t (Namespace "user" Account))
+register regDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiUsers . usersRegister . fillIdF regDyn . fill submitE
+  wireClientRes submitE resE
 
 getCurrentUser
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "user" Account)))
-getCurrentUser tokenDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiUser . userCurrent . fillIdF tokenDyn . fill submitE
+  -> m (ClientRes t (Namespace "user" Account))
+getCurrentUser tokenDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiUser . userCurrent . fillIdF tokenDyn . fill submitE
+  wireClientRes submitE resE
 
 updateCurrentUser
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text (Namespace "user" UpdateUser))
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "user" Account)))
-updateCurrentUser tokenDyn updateDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiUser . userUpdate . fillIdF tokenDyn . fillIdF updateDyn . fill submitE
+  -> m (ClientRes t (Namespace "user" Account))
+updateCurrentUser tokenDyn updateDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiUser . userUpdate . fillIdF tokenDyn . fillIdF updateDyn . fill submitE
+  wireClientRes submitE resE
 
 getProfile
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text Text)
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "profile" Profile)))
-getProfile tokenDyn usernameDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiProfile . profileGet . fillIdF tokenDyn . fillId usernameDyn . fill submitE
+  -> m (ClientRes t (Namespace "profile" Profile))
+getProfile tokenDyn usernameDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiProfile . profileGet . fillIdF tokenDyn . fillId usernameDyn . fill submitE
+  wireClientRes submitE resE
 
 -- TODO FollowUser
 -- TODO UnFollowUser
@@ -99,10 +99,10 @@ listArticles
   -> Dynamic t [Text]
   -> Dynamic t [Text]
   -> Event t ()
-  -> m (Event t (ReqResult () Articles))
+  -> m (ClientRes t Articles)
 listArticles tokenDyn limitDyn offsetDyn authorsDyn favoritedsDyn tagsDyn submitE =
-  fmap switchDyn $ prerender (pure never) $ unIdF $
-    getClient ^. apiArticles . articlesList
+  fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+    resE <- unIdF $ getClient ^. apiArticles . articlesList
       . fillIdF tokenDyn
       . fillIdF limitDyn
       . fillIdF offsetDyn
@@ -110,6 +110,7 @@ listArticles tokenDyn limitDyn offsetDyn authorsDyn favoritedsDyn tagsDyn submit
       . fillIdF favoritedsDyn
       . fillIdF tagsDyn
       . fill submitE
+    wireClientRes submitE resE
 
 -- TODO Feed
 
@@ -118,18 +119,20 @@ getArticle
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text Text)
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "article" Article)))
-getArticle tokenDyn slugDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiArticles . articlesArticle . fillIdF tokenDyn . fillId slugDyn . articleGet . fill submitE
+  -> m (ClientRes t (Namespace "article" Article))
+getArticle tokenDyn slugDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiArticles . articlesArticle . fillIdF tokenDyn . fillId slugDyn . articleGet . fill submitE
+  wireClientRes submitE resE
 
 createArticle
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text (Namespace "article" CreateArticle))
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "article" Article)))
-createArticle tokenDyn createDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiArticles . articlesCreate . fillIdF tokenDyn . fillIdF createDyn . fill submitE
+  -> m (ClientRes t (Namespace "article" Article))
+createArticle tokenDyn createDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiArticles . articlesCreate . fillIdF tokenDyn . fillIdF createDyn . fill submitE
+  wireClientRes submitE resE
 
 -- TODO Update Article
 -- TODO Delete Article
@@ -140,27 +143,31 @@ createComment
   -> Dynamic t (Either Text Text)
   -> Dynamic t (Either Text (Namespace "comment" CreateComment))
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "comment" Comment)))
-createComment tokenDyn slugDyn createDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiArticles . articlesArticle
-    . fillIdF tokenDyn
-    . fillId slugDyn
-    . articleCommentCreate
-    . fillIdF createDyn
-    . fill submitE
+  -> m (ClientRes t (Namespace "comment" Comment))
+createComment tokenDyn slugDyn createDyn submitE =
+  fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+    resE <- unIdF $ getClient ^. apiArticles . articlesArticle
+      . fillIdF tokenDyn
+      . fillId slugDyn
+      . articleCommentCreate
+      . fillIdF createDyn
+      . fill submitE
+    wireClientRes submitE resE
 
 getComments
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text Text)
   -> Event t ()
-  -> m (Event t (ReqResult () (Namespace "comments" [Comment])))
-getComments tokenDyn slugDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiArticles . articlesArticle
-    . fillIdF tokenDyn
-    . fillId slugDyn
-    . articleComments
-    . fill submitE
+  -> m (ClientRes t (Namespace "comments" [Comment]))
+getComments tokenDyn slugDyn submitE =
+  fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+    resE <- unIdF $ getClient ^. apiArticles . articlesArticle
+      . fillIdF tokenDyn
+      . fillId slugDyn
+      . articleComments
+      . fill submitE
+    wireClientRes submitE resE
 
 deleteComment
   :: (Reflex t, Applicative m, Prerender js t m)
@@ -168,14 +175,16 @@ deleteComment
   -> Dynamic t (Either Text Text)
   -> Dynamic t (Either Text Int)
   -> Event t ()
-  -> m (Event t (ReqResult () NoContent))
-deleteComment tokenDyn slugDyn commentIdDyn submitE = fmap switchDyn $ prerender (pure never) $ unIdF $
-  getClient ^. apiArticles . articlesArticle
-    . fillIdF tokenDyn
-    . fillId slugDyn
-    . articleCommentDelete
-    . fillId commentIdDyn
-    . fill submitE
+  -> m (ClientRes t NoContent)
+deleteComment tokenDyn slugDyn commentIdDyn submitE =
+  fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+    resE <- unIdF $ getClient ^. apiArticles . articlesArticle
+      . fillIdF tokenDyn
+      . fillId slugDyn
+      . articleCommentDelete
+      . fillId commentIdDyn
+      . fill submitE
+    wireClientRes submitE resE
 
 -- TODO Favorite / Unfavorite
 -- TODO GetTags
@@ -184,6 +193,18 @@ deleteComment tokenDyn slugDyn commentIdDyn submitE = fmap switchDyn $ prerender
 
 emptyClientRes :: Reflex t => (Event t a, Event t ClientError, Dynamic t Bool)
 emptyClientRes = (never, never, constDyn False)
+
+wireClientRes
+  :: (Reflex t, MonadHold t m)
+  => Event t b
+  -> Event t (ReqResult () a)
+  -> m (ClientRes t a)
+wireClientRes submitE resE = do
+  let successE = fmapMaybe reqSuccess resE
+  let errorE   = fmapMaybe reqClientError resE
+  submittingDyn <- holdDyn False $ leftmost [True <$ submitE, False <$ errorE, False <$ successE]
+
+  pure (successE, errorE, submittingDyn)
 
 reqClientError :: ReqResult tag a -> Maybe ClientError
 reqClientError (ResponseFailure _ msg xhrR) = Just $ case view xhrResponse_status xhrR of

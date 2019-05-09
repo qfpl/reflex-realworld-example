@@ -8,10 +8,10 @@ import Control.Monad.Fix      (MonadFix)
 import Data.Bool              (bool)
 import Data.Functor           (void)
 import Obelisk.Route.Frontend (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, askRoute)
-import Servant.Common.Req     (QParam (QNone), reqSuccess)
+import Servant.Common.Req     (QParam (QNone))
 
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
-import           Common.Conduit.Api.Namespace         (unNamespace)
+import           Common.Conduit.Api.Namespace         (Namespace(Namespace))
 import qualified Common.Conduit.Api.Profiles.Profile  as Profile
 import           Common.Route                         (FrontendRoute (..), ProfileRoute (..), Username (..))
 import           Frontend.ArticlePreview              (articlesPreview, profileImage)
@@ -40,21 +40,20 @@ profile usernameDyn = do
     elClass "div" "container" $
       elClass "div" "row" $
         elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
-          loadResE <- Client.getProfile
+          (loadSuccessE,_,_) <- Client.getProfile
             tokDyn
             (pure . unUsername <$> usernameDyn)
             (leftmost [pbE,void . updated $ usernameDyn])
-          let loadSuccessE = fmap unNamespace . reqSuccess <$> loadResE
-          void $ widgetHold (text "Loading") $ ffor loadSuccessE $
-            maybe blank $ \acct -> do
-              profileImage "user-img" (constDyn $ Profile.image acct)
-              el "h4" $ text $ Profile.username acct
-              el "p" $ text $ Profile.bio acct
-              _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" (constDyn False) $ do
-                elClass "i" "ion-plus-round" blank
-                text " Follow "
-                text $ Profile.username acct
-              pure ()
+
+          void $ widgetHold (text "Loading") $ ffor loadSuccessE $ \(Namespace acct) -> do
+            profileImage "user-img" (constDyn $ Profile.image acct)
+            el "h4" $ text $ Profile.username acct
+            el "p" $ text $ Profile.bio acct
+            _ <- buttonClass "btn btn-sm btn-outline-secondary action-btn" (constDyn False) $ do
+              elClass "i" "ion-plus-round" blank
+              text " Follow "
+              text $ Profile.username acct
+            pure ()
   elClass "div" "container" $
     elClass "div" "row" $
       elClass "div" "col-xs-12 col-md-10 offset-md-1" $ do
@@ -64,7 +63,7 @@ profile usernameDyn = do
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
 
-          artE <- Client.listArticles
+          (loadArtsSuccessE,_,_) <- Client.listArticles
             tokDyn
             (constDyn QNone)
             (constDyn QNone)
@@ -73,7 +72,7 @@ profile usernameDyn = do
             (constDyn [])
             (leftmost [pbE,void $ updated tokDyn])
 
-          artsDyn <- holdDyn (Articles [] 0) (fmapMaybe reqSuccess artE)
+          artsDyn <- holdDyn (Articles [] 0) loadArtsSuccessE
           articlesPreview artsDyn
   where
     navItem sr rDyn = elClass "li" "nav-item" . routeLinkDynClass

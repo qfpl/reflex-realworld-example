@@ -14,11 +14,9 @@ import Obelisk.Frontend           (Frontend (Frontend), ObeliskWidget)
 import Obelisk.Route.Frontend     (pattern (:/), R, RouteToUrl, RoutedT, SetRoute, mapRoutedT, subRoute_)
 import Reflex.Dom.Storage.Base    (StorageT (..), StorageType (LocalStorage), runStorageT)
 import Reflex.Dom.Storage.Class   (askStorageTag, pdmInsert, pdmRemove, tellStorage)
-import Servant.Common.Req         (ReqResult, reqSuccess)
 
 
-import           Common.Conduit.Api.Namespace    (Namespace, unNamespace)
-import           Common.Conduit.Api.User.Account (Account)
+import           Common.Conduit.Api.Namespace    (unNamespace)
 import qualified Common.Conduit.Api.User.Account as Account
 import           Common.Route                    (FrontendRoute (..))
 import           Frontend.Article                (article)
@@ -56,17 +54,13 @@ htmlBody = mapRoutedT unravelAppState $ do
   prerender_ (pure ()) $ do
     jwtDyn <- askStorageTag LocalStorageJWT
     pbE <- getPostBuild
-    currentUserE <- Client.getCurrentUser jwtDyn pbE
-    currentUserResUpdate currentUserE
+    (currentUserE,currentUserErrE,_) <- Client.getCurrentUser jwtDyn pbE
+    tellEvent $ (pure . LogIn . unNamespace) <$> currentUserE
+    tellEvent $ (pure LogOut) <$ currentUserErrE
   nav
   subRoute_ pages
   footer
   where
-    currentUserResUpdate
-      :: Event t (ReqResult () (Namespace "user" Account))
-      -> RoutedAppState t (Client m) ()
-    currentUserResUpdate = tellEvent . fmap (pure . maybe LogOut (LogIn . unNamespace) . reqSuccess)
-
     unravelAppState :: AppState t m () -> m ()
     unravelAppState m = mdo
       lsDyn <- foldDyn appEndo initialFrontendData (foldMap updateFrontendData <$> sE)
