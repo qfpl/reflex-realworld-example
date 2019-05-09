@@ -7,8 +7,9 @@ import Control.Lens
 import qualified Crypto.JOSE              as HOSE
 import qualified Crypto.JOSE.Types        as HOSE
 import Control.Monad.IO.Class (liftIO)
-import           Data.Maybe               (fromMaybe)
-import           Data.Text                (Text, unpack)
+import           Data.Maybe               (maybe)
+import           Data.Text                (Text)
+import qualified Data.Text                as T
 import           Data.Text.Encoding       (encodeUtf8)
 import           Obelisk.Backend
 import           Obelisk.ExecutableConfig (get)
@@ -22,7 +23,7 @@ import Common.Route       (BackendRoute (..), FrontendRoute, backendRouteEncoder
 import Backend.Conduit.Database (openConduitDb)
 
 getYolo :: Text -> IO Text
-getYolo l = fromMaybe (error . unpack $ "Please fill in config: " <> l) <$> get l
+getYolo l = maybe (error . T.unpack $ "Please fill in config: " <> l) T.strip <$> get l
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
@@ -38,7 +39,7 @@ backend = Backend
              $  jwtKey
       env <- mkEnv pgConnStr jwk
       let context = mkContext (env ^. jwtSettings)
-      liftIO $ putStrLn "About to test the db connection. If ob run dies, check out config/backend/jwtKey"
+      liftIO $ putStrLn "About to test the db connection. If ob run dies, check out config/backend/pgConnStr"
       _ <- openConduitDb (encodeUtf8 pgConnStr)
       serve $ \case
         (BackendRoute_Missing :/ ()) -> return ()
