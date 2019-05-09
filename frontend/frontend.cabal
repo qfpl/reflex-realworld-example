@@ -41,8 +41,11 @@ library
       Frontend
     , Frontend.Article
     , Frontend.ArticlePreview
+    , Frontend.Conduit.Client
+    , Frontend.Conduit.Client.Internal
     , Frontend.Editor
     , Frontend.FrontendStateT
+    , Frontend.Head
     , Frontend.HomePage
     , Frontend.LocalStorageKey
     , Frontend.Login
@@ -51,9 +54,8 @@ library
     , Frontend.Register
     , Frontend.Settings
     , Frontend.Utils
-    , Frontend.Conduit.Client
 
-  ghc-options: -Wall
+  ghc-options: -Wall 
   if impl(ghcjs)
     ghcjs-options:    +RTS -K2048M -RTS -Wall
 

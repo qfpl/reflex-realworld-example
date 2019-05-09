@@ -31,6 +31,7 @@ library
     Common.Conduit.Api.Articles.Article
     Common.Conduit.Api.Articles.Attributes
     Common.Conduit.Api.Articles.CreateComment
+    Common.Conduit.Api.Errors
     Common.Conduit.Api.Profiles
     Common.Conduit.Api.Profiles.Profile
     Common.Conduit.Api.User
@@ -39,3 +40,4 @@ library
     Common.Conduit.Api.Users
     Common.Conduit.Api.Users.Credentials
     Common.Conduit.Api.Users.Registrant
+    Common.Conduit.Api.Validation

@@ -8,20 +8,56 @@ library
   if impl(ghcjs)
     buildable: False
   build-depends: base
+               , aeson
                , beam-core
                , beam-postgres
+               , bytestring
+               , conduit
                , common
+               , containers
+               , cookie
+               , errors
                , frontend
+               , jose
+               , http-api-data
+               , lens
+               , monad-control
+               , mtl
                , obelisk-backend
                , obelisk-route
+               , obelisk-executable-config
                , postgresql-simple
                , resource-pool
                , scrypt
                , servant-auth-snap
                , servant-snap
+               , snap-core
+               , text
+               , time
+               , transformers
                , validation
+               , vector
   exposed-modules:
     Backend
+    Backend.Conduit
+    Backend.Conduit.Claim
+    Backend.Conduit.Database
+    Backend.Conduit.Database.Articles
+    Backend.Conduit.Database.Articles.Article
+    Backend.Conduit.Database.Articles.ArticleTag
+    Backend.Conduit.Database.Articles.Favorite
+    Backend.Conduit.Database.Comments
+    Backend.Conduit.Database.Comments.Comment
+    Backend.Conduit.Database.Tags
+    Backend.Conduit.Database.Tags.Tag
+    Backend.Conduit.Database.Users
+    Backend.Conduit.Database.Users.Follow
+    Backend.Conduit.Database.Users.User
+    Backend.Conduit.Errors
+    Backend.Conduit.Validation
+    Database.Beam.Postgres.Extended
+    SetCookieOrphan
+
   ghc-options: -Wall
 
 executable backend
