@@ -66,7 +66,7 @@ mkEnv dbConnStr jwk = do
   pure $ ConduitServerEnv p (defaultJWTSettings jwk)
 
 server :: Server (Api Claim) ConduitServerContext ConduitServerM
-server = usersServer :<|> userServer :<|> articlesServer :<|> profileServer
+server = usersServer :<|> userServer :<|> articlesServer :<|> profileServer :<|> tagsServer
 
 usersServer :: Server (UsersApi Claim) ConduitServerContext ConduitServerM
 usersServer = loginServer :<|> registerServer
@@ -166,6 +166,11 @@ profileServer = profileGetServer
         currUserMay <- optionallyLoadAuthorizedUser authRes
         profileMay  <- liftQuery $ DBUsers.findProfile (primaryKey <$> currUserMay) username
         Namespace <$> (profileMay ?? (notFound ("Profile(" <> username <> ")")))
+
+tagsServer :: Server (TagsApi Claim) ConduitServerContext ConduitServerM
+tagsServer = tagsAllServer
+  where
+    tagsAllServer = runConduitErrorsT . runDatabase . liftQuery $ Namespace . fmap DBTags.name <$> DBTags.query
 
 -- Helper Functions TODO Move to Internal Module -------------------------------------------------------------
 

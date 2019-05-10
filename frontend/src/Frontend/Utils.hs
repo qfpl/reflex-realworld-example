@@ -37,8 +37,17 @@ buttonClass
   -> Dynamic t Bool
   -> m a
   -> m (Event t ())
-buttonClass cls disabledDyn m = do
-  let attrsDyn = ((("class" =: cls) <>) . (bool (Map.empty) ("disabled" =: ""))) <$> disabledDyn
+buttonClass cls = buttonDynClass (constDyn cls)
+
+buttonDynClass
+  :: forall t m a
+  . (DomBuilder t m, PostBuild t m)
+  => Dynamic t Text
+  -> Dynamic t Bool
+  -> m a
+  -> m (Event t ())
+buttonDynClass clsDyn disabledDyn m = do
+  let attrsDyn = (<>) <$> (("class" =:) <$> clsDyn) <*> (bool (Map.empty) ("disabled" =: "") <$> disabledDyn)
   modAttrs <- dynamicAttributesToModifyAttributes attrsDyn
   let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
         & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)

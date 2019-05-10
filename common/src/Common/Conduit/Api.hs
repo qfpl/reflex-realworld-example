@@ -4,6 +4,7 @@ module Common.Conduit.Api
   , module Articles
   , module Namespace
   , module Profiles
+  , module Tags
   , module User
   , module Users
   ) where
@@ -16,6 +17,7 @@ import Common.Conduit.Api.Namespace as Namespace
 import Common.Conduit.Api.Profiles  as Profiles
 import Common.Conduit.Api.User      as User
 import Common.Conduit.Api.Users     as Users
+import Common.Conduit.Api.Tags      as Tags
 
 type Api token = "api" :> TopLevelApi token
 
@@ -24,6 +26,7 @@ type TopLevelApi token
      :<|> ("user"      :> UserApi token)
      :<|> ("articles"  :> ArticlesApi token)
      :<|> ("profiles"  :> ProfilesApi token)
+     :<|> ("tags"      :> TagsApi token)
 
 api :: Proxy (Api token)
 api = Proxy

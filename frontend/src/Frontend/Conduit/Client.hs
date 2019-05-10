@@ -84,7 +84,7 @@ getProfile
   -> Event t ()
   -> m (ClientRes t (Namespace "profile" Profile))
 getProfile tokenDyn usernameDyn submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
-  resE <- unIdF $ getClient ^. apiProfile . profileGet . fillIdF tokenDyn . fillId usernameDyn . fill submitE
+  resE <- unIdF $ getClient ^. apiProfiles . profileGet . fillIdF tokenDyn . fillId usernameDyn . fill submitE
   wireClientRes submitE resE
 
 -- TODO FollowUser
@@ -187,7 +187,14 @@ deleteComment tokenDyn slugDyn commentIdDyn submitE =
     wireClientRes submitE resE
 
 -- TODO Favorite / Unfavorite
--- TODO GetTags
+
+allTags
+  :: (Reflex t, Applicative m, Prerender js t m)
+  => Event t ()
+  -> m (ClientRes t (Namespace "tags" [Text]))
+allTags submitE = fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+  resE <- unIdF $ getClient ^. apiTags . tagsAll . fill submitE
+  wireClientRes submitE resE
 
 -- Helpers ---------------------------------------------------------------------------------------------------
 
