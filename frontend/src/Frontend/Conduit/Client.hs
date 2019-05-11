@@ -5,6 +5,7 @@ import Control.Lens
 import Reflex
 import Reflex.Dom.Core hiding (Namespace)
 
+import Control.Monad           (join)
 import Data.Aeson              (decode)
 import Data.Functor.Identity   (Identity (..))
 import Data.Text               (Text)
@@ -15,20 +16,20 @@ import Servant.API             (NoContent)
 import Servant.Common.Req      (QParam)
 import Servant.Reflex.Multi    (ReqResult (ResponseFailure), reqSuccess)
 
-import           Common.Conduit.Api.Articles.Article       (Article)
-import           Common.Conduit.Api.Articles.Articles      (Articles)
-import           Common.Conduit.Api.Articles.Attributes    (CreateArticle)
-import           Common.Conduit.Api.Articles.Comment       (Comment)
-import           Common.Conduit.Api.Articles.CreateComment (CreateComment)
-import           Common.Conduit.Api.Errors                 (ErrorBody)
-import           Common.Conduit.Api.Namespace              (Namespace)
-import           Common.Conduit.Api.Profiles               (Profile)
-import           Common.Conduit.Api.User.Account           (Account, Token)
-import           Common.Conduit.Api.User.Update            (UpdateUser)
-import           Common.Conduit.Api.Users.Credentials      (Credentials)
-import           Common.Conduit.Api.Users.Registrant       (Registrant)
-import           Common.Conduit.Api.Validation             (ValidationErrors)
-import           Frontend.Conduit.Client.Internal
+import Common.Conduit.Api.Articles.Article       (Article)
+import Common.Conduit.Api.Articles.Articles      (Articles)
+import Common.Conduit.Api.Articles.Attributes    (CreateArticle)
+import Common.Conduit.Api.Articles.Comment       (Comment)
+import Common.Conduit.Api.Articles.CreateComment (CreateComment)
+import Common.Conduit.Api.Errors                 (ErrorBody)
+import Common.Conduit.Api.Namespace              (Namespace)
+import Common.Conduit.Api.Profiles               (Profile)
+import Common.Conduit.Api.User.Account           (Account, Token)
+import Common.Conduit.Api.User.Update            (UpdateUser)
+import Common.Conduit.Api.Users.Credentials      (Credentials)
+import Common.Conduit.Api.Users.Registrant       (Registrant)
+import Common.Conduit.Api.Validation             (ValidationErrors)
+import Frontend.Conduit.Client.Internal
 
 type ClientRes t a = (Event t a, Event t ClientError, Dynamic t Bool)
 
@@ -112,7 +113,21 @@ listArticles tokenDyn limitDyn offsetDyn authorsDyn favoritedsDyn tagsDyn submit
       . fill submitE
     wireClientRes submitE resE
 
--- TODO Feed
+feed
+  :: (Reflex t, Applicative m, Prerender js t m)
+  => Dynamic t (Maybe Token)
+  -> Dynamic t (QParam Integer)
+  -> Dynamic t (QParam Integer)
+  -> Event t ()
+  -> m (ClientRes t Articles)
+feed tokenDyn limitDyn offsetDyn submitE =
+  fmap switchClientRes $ prerender (pure emptyClientRes) $ do
+    resE <- unIdF $ getClient ^. apiArticles . articlesFeed
+      . fillIdF tokenDyn
+      . fillIdF limitDyn
+      . fillIdF offsetDyn
+      . fill submitE
+    wireClientRes submitE resE
 
 getArticle
   :: (Reflex t, Applicative m, Prerender js t m)
@@ -231,6 +246,16 @@ switchClientRes d =
   , switchDyn . fmap (^. _2) $ d
   , d >>= (^. _3)
   )
+
+switchHoldThroughClientRes
+  :: (Reflex t, MonadHold t m)
+  => Event t (ClientRes t a)
+  -> m (ClientRes t a)
+switchHoldThroughClientRes res = do
+  successE <- switchHoldPromptly never (view _1 <$> res)
+  failureE <- switchHoldPromptly never (view _2 <$> res)
+  submittingDyn <- fmap join $ holdDyn (constDyn True) (view _3 <$> res)
+  pure (successE, failureE, submittingDyn)
 
 unIdF :: (Reflex t, Functor m) => m (Event t (Identity a)) -> m (Event t a)
 unIdF = fmap (fmap runIdentity)

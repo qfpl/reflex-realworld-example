@@ -5,6 +5,7 @@ module Frontend.ArticlePreview where
 import Reflex.Dom.Core
 
 import           Control.Monad.Fix      (MonadFix)
+import           Data.Bool              (bool)
 import           Data.Functor           (void)
 import qualified Data.Map               as Map
 import           Data.Text              (Text)
@@ -28,10 +29,19 @@ articlesPreview
      , MonadHold t m
      , MonadFix m
      )
-  => Dynamic t Articles -> m ()
-articlesPreview artsDyn = do
-  let artMapDyn = Map.fromList . fmap (\a -> (Article.id a, a)) . Articles.articles <$> artsDyn
-  void $ list artMapDyn $ articlePreview
+  => Dynamic t Bool
+  -> Dynamic t Articles
+  -> m ()
+articlesPreview artsLoading artsDyn = void . dyn . ffor artsLoading $ bool loaded loading
+  where
+    loaded =
+      let artMapDyn = Map.fromList . fmap (\a -> (Article.id a, a)) . Articles.articles <$> artsDyn
+      in void $ dyn $ ffor artMapDyn $ \m ->
+        if Map.null m
+        then blankPreview "There is nothing here ... yet!"
+        else void $ list artMapDyn articlePreview
+    loading = blankPreview "Loading..."
+    blankPreview = elClass "div" "article-preview" . el "em" . text
 
 articlePreview
   :: ( DomBuilder t m

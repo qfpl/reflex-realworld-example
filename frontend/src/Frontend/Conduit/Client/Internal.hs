@@ -91,6 +91,12 @@ data ArticlesClient f t m = ArticlesClient
     -> Dynamic t (f (Either Text (Namespace "article" CreateArticle)))
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "article" Article))))
+  , _articlesFeed
+    :: Dynamic t (f (Maybe Token))
+    -> Dynamic t (f (QParam Integer))
+    -> Dynamic t (f (QParam Integer))
+    -> Event t ()
+    -> m (Event t (f (ReqResult () Articles)))
   , _articlesArticle :: Dynamic t (f (Maybe Token)) -> f (Dynamic t (Either Text Text)) -> ArticleClient f t m
   }
 makeLenses ''ArticlesClient
@@ -139,7 +145,7 @@ getClient = mkClient (pure $ BasePath "/") -- This would be much better if there
             _userCurrent :<|> _userUpdate = apiUserC
         _apiArticles = ArticlesClient { .. }
           where
-            _articlesList :<|> _articlesCreate :<|> articleC = apiArticlesC
+            _articlesList :<|> _articlesCreate :<|> _articlesFeed :<|> articleC = apiArticlesC
             _articlesArticle auth slug = ArticleClient { .. }
               where
                 _articleGet  :<|> _articleComments :<|> _articleCommentCreate :<|> _articleCommentDelete = articleC auth slug

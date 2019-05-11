@@ -35,7 +35,14 @@ type ArticlesApi token =
     Auth '[JWT] token
   :> ReqBody '[JSON] (Namespace "article" CreateArticle)
   :> PostCreated '[JSON] (Namespace "article" Article)
-  ) :<|> ArticleApi token
+  ) :<|> (
+    "feed"
+  :> Auth '[JWT] token
+  :> QueryParam "limit" Integer
+  :> QueryParam "offset" Integer
+  :> Get '[JSON] Articles
+  )
+  :<|> ArticleApi token
 
 
 type ArticleApi token = (

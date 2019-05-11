@@ -12,7 +12,7 @@ import           Common.Conduit.Api.Articles.Article (Article)
 data Articles = Articles
   { articles      :: [Article]
   , articlesCount :: Int
-  }
+  } deriving Show
 
 fromList :: [Article] -> Articles
 fromList = Articles <$> id <*> length

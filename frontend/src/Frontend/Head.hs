@@ -41,7 +41,7 @@ gfontsFontFace familyName fontType = traverse_ text
   , "  font-style: " <> fontStyle <> ";"
   , "  font-weight: " <> fontWeight <> ";"
   , fold
-    [ "  src: url(",snaked,"/",noSpaces,"-",styleName,".ttf)"
+    [ "  src: url(/static/gfonts/",snaked,"/",noSpaces,"-",styleName,".ttf)"
     , ";"
     ]
   , "} "

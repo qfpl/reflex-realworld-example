@@ -63,7 +63,7 @@ profile usernameDyn = do
             navItem Nothing rDyn $ text "My Articles"
             navItem (Just $ ProfileRoute_Favourites :/ ()) rDyn $ text "My Favourites"
 
-          (loadArtsSuccessE,_,_) <- Client.listArticles
+          (loadArtsSuccessE,_,artsLoadingDyn) <- Client.listArticles
             tokDyn
             (constDyn QNone)
             (constDyn QNone)
@@ -73,7 +73,7 @@ profile usernameDyn = do
             (leftmost [pbE,void $ updated tokDyn])
 
           artsDyn <- holdDyn (Articles [] 0) loadArtsSuccessE
-          articlesPreview artsDyn
+          articlesPreview artsLoadingDyn artsDyn
   where
     navItem sr rDyn = elClass "li" "nav-item" . routeLinkDynClass
       (("nav-link " <>) . bool "" " active" . (== sr) <$> rDyn)

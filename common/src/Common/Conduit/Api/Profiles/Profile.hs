@@ -18,7 +18,7 @@ data Profile = Profile
   , bio       :: Text
   , image     :: Maybe Text
   , following :: Bool
-  } deriving (Generic, Eq)
+  } deriving (Generic, Eq, Show)
 
 deriving instance ToJSON Profile
 deriving instance FromJSON Profile

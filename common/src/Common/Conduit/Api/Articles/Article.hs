@@ -20,7 +20,7 @@ data Article = Article
   , favorited      :: Bool
   , favoritesCount :: Int
   , author         :: Profile
-  }
+  } deriving Show
 
 deriving instance Generic Article
 deriving instance ToJSON Article

@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, OverloadedStrings, PatternSynonyms #-}
-{-# LANGUAGE RecursiveDo, ScopedTypeVariables                                                        #-}
+{-# LANGUAGE RecursiveDo, ScopedTypeVariables, TemplateHaskell                                       #-}
 module Frontend.HomePage where
 
 import Control.Lens    hiding (element)
 import Reflex.Dom.Core
 
 import Control.Monad.Fix      (MonadFix)
-import Data.Foldable          (toList, traverse_)
 import Data.Functor           (void)
 import Data.Proxy             (Proxy (Proxy))
+import Data.Text              (Text)
 import Obelisk.Route          (R)
 import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
 import Servant.Common.Req     (QParam (QNone))
@@ -20,6 +20,9 @@ import           Frontend.ArticlePreview              (articlesPreview)
 import qualified Frontend.Conduit.Client              as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                       (buttonClass, buttonDynClass)
+
+data HomePageSelected = GlobalSelected | FeedSelected | TagSelected Text deriving Show
+makePrisms ''HomePageSelected
 
 homePage
   :: forall t m s js
@@ -38,22 +41,41 @@ homePage = elClass "div" "home-page" $ mdo
   tokDyn <- reviewFrontendState loggedInToken
   pbE <- getPostBuild
 
-  -- TODO: This changes to an ADT with Feed/Global/Tag Text. Default changes by tokenDyn
-  selectedTagDyn <- holdDyn Nothing $ leftmost
-    [ (fmap Just . switchDyn . fmap leftmost $ tagSelectEDyn)
-    , Nothing <$ globalSelectE
+  selectedDyn <- holdDyn GlobalSelected $ leftmost
+    [ (fmap TagSelected . switchDyn . fmap leftmost $ tagSelectEDyn)
+    , GlobalSelected <$ globalSelectE
+    , FeedSelected <$ fmapMaybe id (current tokDyn <@ pbE)
+    , FeedSelected <$ fmapMaybe id (updated tokDyn)
+    , FeedSelected <$ feedSelectE
     ]
 
-  (loadArtsE,_,_) <- Client.listArticles
-    tokDyn
-    (constDyn QNone)
-    (constDyn QNone)
-    (constDyn [])
-    (constDyn [])
-    (toList <$> selectedTagDyn)
-    (leftmost [pbE,void $ updated selectedTagDyn, void $ updated tokDyn])
+  res <- dyn $ ffor selectedDyn $ \s -> do
+    newSelection <- getPostBuild
+    case s of
+      FeedSelected -> Client.feed
+        tokDyn
+        (constDyn QNone)
+        (constDyn QNone)
+        newSelection
+      GlobalSelected -> Client.listArticles
+        tokDyn
+        (constDyn QNone)
+        (constDyn QNone)
+        (constDyn [])
+        (constDyn [])
+        (constDyn [])
+        newSelection
 
-  -- Why doesn't postBuild work here?
+      TagSelected t -> Client.listArticles
+        tokDyn
+        (constDyn QNone)
+        (constDyn QNone)
+        (constDyn [])
+        (constDyn [])
+        (constDyn [t])
+        newSelection
+
+  (loadArtsE,_,artsLoadingDyn) <- Client.switchHoldThroughClientRes res
   (loadTagsE,_,_) <- Client.allTags (leftmost [pbE,void $ updated tokDyn])
 
   artsDyn <- holdDyn (Articles [] 0) loadArtsE
@@ -64,29 +86,32 @@ homePage = elClass "div" "home-page" $ mdo
       elClass "h1" "logo-font" $ text "conduit"
       el "p" $ text "A place to share your knowledge"
 
-  (globalSelectE, tagSelectEDyn) <- elClass "div" "container page" $ elClass "div" "row" $ do
-    globalSelectE <- elClass "div" "col-md-9" $ do
-      globalSelectE <- elClass "div" "feed-toggle" $
+  (globalSelectE, tagSelectEDyn, feedSelectE) <- elClass "div" "container page" $ elClass "div" "row" $ do
+    (globalSelectE',feedSelectE') <- elClass "div" "col-md-9" $ do
+      (globalSelectE'',feedSelectE'') <- elClass "div" "feed-toggle" $
         elClass "ul" "nav nav-pills outline-active" $ do
-          -- TODO Only show if logged in
-          -- elClass "li" "nav-item" $ routeLinkClass "nav-link disabled" (FrontendRoute_Home :/ ()) $ text "Your Feed"
-          let homeClassDyn = ("nav-link" <>) . maybe " active" (const "") <$> selectedTagDyn
-          globalSelectE' <- elClass "li" "nav-item" $ buttonDynClass homeClassDyn (constDyn False) $ text "Global Feed"
-          -- TODO Show a thing if we have a selected tag
-          selectTagEE <- dyn $ ffor selectedTagDyn $ maybe (pure never) $ \t ->
-            elClass "li" "nav-item" $ buttonClass "nav-link active" (constDyn False) $ text $ "#" <> t
-          switchHold never selectTagEE
+          feedSelectEDyn <- dyn $ ffor tokDyn $ maybe (pure never) $ \_ -> do
+            let feedClassDyn = ("nav-link" <>) . (^._FeedSelected.to (const " active")) <$> selectedDyn
+            elClass "li" "nav-item" $ buttonDynClass feedClassDyn (constDyn False) $ text "Your Feed"
+          feedSelectE''' <- switchHold never feedSelectEDyn
 
-          pure globalSelectE'
-      articlesPreview artsDyn
-      pure globalSelectE
+          let homeClassDyn = ("nav-link" <>) . (^._GlobalSelected.to (const " active")) <$> selectedDyn
+          globalSelectE''' <- elClass "li" "nav-item" $ buttonDynClass homeClassDyn (constDyn False) $ text "Global Feed"
+          void . dyn . ffor selectedDyn $ \case
+            TagSelected t -> elClass "li" "nav-item" $ buttonClass "nav-link active" (constDyn False) $ text $ "#" <> t
+            _             -> pure never
 
-    tagSelectEDyn <- elClass "div" "col-md-3" $
+          pure (globalSelectE''', feedSelectE''')
+      articlesPreview artsLoadingDyn artsDyn
+      pure (globalSelectE'', feedSelectE'')
+
+    tagSelectEDyn' <- elClass "div" "col-md-3" $
       elClass "div" "sidebar" $ do
         el "p" $ text "Popular Tags"
         elClass "div" "tag-list" $ do
           simpleList (unNamespace <$> tagsDyn) tagPill
-    pure (globalSelectE, tagSelectEDyn)
+
+    pure (globalSelectE', tagSelectEDyn', feedSelectE')
   pure ()
   where
     tagPill tDyn = do
