@@ -5,13 +5,15 @@ module Frontend.HomePage where
 import Control.Lens    hiding (element)
 import Reflex.Dom.Core
 
-import Control.Monad.Fix      (MonadFix)
-import Data.Functor           (void)
-import Data.Proxy             (Proxy (Proxy))
-import Data.Text              (Text)
-import Obelisk.Route          (R)
-import Obelisk.Route.Frontend (RouteToUrl, SetRoute)
-import Servant.Common.Req     (QParam (QNone))
+import           Control.Monad.Fix      (MonadFix)
+import           Data.Functor           (void)
+import           Data.List.NonEmpty     (NonEmpty ((:|)))
+import qualified Data.List.NonEmpty     as NEL
+import           Data.Proxy             (Proxy (Proxy))
+import           Data.Text              (Text)
+import           Obelisk.Route          (R)
+import           Obelisk.Route.Frontend (RouteToUrl, SetRoute)
+import           Servant.Common.Req     (QParam (QNone))
 
 import           Common.Conduit.Api.Articles.Articles (Articles (..))
 import           Common.Conduit.Api.Namespace         (Namespace (Namespace), unNamespace)
@@ -42,11 +44,9 @@ homePage = elClass "div" "home-page" $ mdo
   pbE <- getPostBuild
 
   selectedDyn <- holdDyn GlobalSelected $ leftmost
-    [ (fmap TagSelected . switchDyn . fmap leftmost $ tagSelectEDyn)
-    , GlobalSelected <$ globalSelectE
-    , FeedSelected <$ fmapMaybe id (current tokDyn <@ pbE)
+    [ FeedSelected <$ fmapMaybe id (current tokDyn <@ pbE)
     , FeedSelected <$ fmapMaybe id (updated tokDyn)
-    , FeedSelected <$ feedSelectE
+    , NEL.head <$> newSelectedE
     ]
 
   res <- dyn $ ffor selectedDyn $ \s -> do
@@ -86,33 +86,34 @@ homePage = elClass "div" "home-page" $ mdo
       elClass "h1" "logo-font" $ text "conduit"
       el "p" $ text "A place to share your knowledge"
 
-  (globalSelectE, tagSelectEDyn, feedSelectE) <- elClass "div" "container page" $ elClass "div" "row" $ do
-    (globalSelectE',feedSelectE') <- elClass "div" "col-md-9" $ do
-      (globalSelectE'',feedSelectE'') <- elClass "div" "feed-toggle" $
+  (_,newSelectedE) <- runEventWriterT . elClass "div" "container page" . elClass "div" "row" $ do
+    elClass "div" "col-md-9" $ do
+      elClass "div" "feed-toggle" $
         elClass "ul" "nav nav-pills outline-active" $ do
           feedSelectEDyn <- dyn $ ffor tokDyn $ maybe (pure never) $ \_ -> do
             let feedClassDyn = ("nav-link" <>) . (^._FeedSelected.to (const " active")) <$> selectedDyn
             elClass "li" "nav-item" $ buttonDynClass feedClassDyn (constDyn False) $ text "Your Feed"
           feedSelectE''' <- switchHold never feedSelectEDyn
+          tellEvent $ (FeedSelected :| []) <$ feedSelectE'''
 
           let homeClassDyn = ("nav-link" <>) . (^._GlobalSelected.to (const " active")) <$> selectedDyn
           globalSelectE''' <- elClass "li" "nav-item" $ buttonDynClass homeClassDyn (constDyn False) $ text "Global Feed"
           void . dyn . ffor selectedDyn $ \case
             TagSelected t -> elClass "li" "nav-item" $ buttonClass "nav-link active" (constDyn False) $ text $ "#" <> t
             _             -> pure never
+          tellEvent $ (GlobalSelected :| []) <$ globalSelectE'''
 
-          pure (globalSelectE''', feedSelectE''')
       articlesPreview artsLoadingDyn artsDyn
-      pure (globalSelectE'', feedSelectE'')
 
-    tagSelectEDyn' <- elClass "div" "col-md-3" $
+    elClass "div" "col-md-3" $
       elClass "div" "sidebar" $ do
         el "p" $ text "Popular Tags"
         elClass "div" "tag-list" $ do
-          simpleList (unNamespace <$> tagsDyn) tagPill
-
-    pure (globalSelectE', tagSelectEDyn', feedSelectE')
+          tagSelectEDyn <- simpleList (unNamespace <$> tagsDyn) tagPill
+          let tagSelectE = switchDyn $  leftmost <$> tagSelectEDyn
+          tellEvent $ (:|[]). TagSelected <$> tagSelectE
   pure ()
+
   where
     tagPill tDyn = do
       let cfg = (def :: ElementConfig EventResult t (DomBuilderSpace m))
