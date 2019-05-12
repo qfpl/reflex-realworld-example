@@ -34,6 +34,7 @@ library
     Common.Conduit.Api.Errors
     Common.Conduit.Api.Profiles
     Common.Conduit.Api.Profiles.Profile
+    Common.Conduit.Api.Tags
     Common.Conduit.Api.User
     Common.Conduit.Api.User.Update
     Common.Conduit.Api.User.Account
