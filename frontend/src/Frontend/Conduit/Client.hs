@@ -252,8 +252,8 @@ switchHoldThroughClientRes
   => Event t (ClientRes t a)
   -> m (ClientRes t a)
 switchHoldThroughClientRes res = do
-  successE <- switchHoldPromptly never (view _1 <$> res)
-  failureE <- switchHoldPromptly never (view _2 <$> res)
+  successE <- switchHold never (view _1 <$> res)
+  failureE <- switchHold never (view _2 <$> res)
   submittingDyn <- fmap join $ holdDyn (constDyn True) (view _3 <$> res)
   pure (successE, failureE, submittingDyn)
 

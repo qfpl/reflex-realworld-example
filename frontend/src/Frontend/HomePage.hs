@@ -5,6 +5,7 @@ module Frontend.HomePage where
 import Control.Lens    hiding (element)
 import Reflex.Dom.Core
 
+import Debug.Trace (traceShowId)
 import           Control.Monad.Fix      (MonadFix)
 import           Data.Functor           (void)
 import           Data.List.NonEmpty     (NonEmpty ((:|)))
@@ -44,14 +45,14 @@ homePage = elClass "div" "home-page" $ mdo
   pbE <- getPostBuild
 
   selectedDyn <- holdDyn GlobalSelected $ leftmost
-    [ FeedSelected <$ fmapMaybe id (current tokDyn <@ pbE)
-    , FeedSelected <$ fmapMaybe id (updated tokDyn)
+    [ maybe GlobalSelected (const FeedSelected) <$> current tokDyn <@ pbE
+    , maybe GlobalSelected (const FeedSelected) <$> updated tokDyn
     , NEL.head <$> newSelectedE
     ]
 
   res <- dyn $ ffor selectedDyn $ \s -> do
     newSelection <- getPostBuild
-    case s of
+    case traceShowId s of
       FeedSelected -> Client.feed
         tokDyn
         (constDyn QNone)
