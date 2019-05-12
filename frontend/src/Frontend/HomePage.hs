@@ -70,9 +70,9 @@ homePage = elClass "div" "home-page" $ mdo
         tokDyn
         (constDyn QNone)
         (constDyn QNone)
-        (constDyn [])
-        (constDyn [])
         (constDyn [t])
+        (constDyn [])
+        (constDyn [])
         newSelection
 
   (loadArtsE,_,artsLoadingDyn) <- Client.switchHoldThroughClientRes res
