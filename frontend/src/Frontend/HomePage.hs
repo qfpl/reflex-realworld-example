@@ -5,7 +5,6 @@ module Frontend.HomePage where
 import Control.Lens    hiding (element)
 import Reflex.Dom.Core
 
-import Debug.Trace (traceShowId)
 import           Control.Monad.Fix      (MonadFix)
 import           Data.Functor           (void)
 import           Data.List.NonEmpty     (NonEmpty ((:|)))
@@ -52,7 +51,7 @@ homePage = elClass "div" "home-page" $ mdo
 
   res <- dyn $ ffor selectedDyn $ \s -> do
     newSelection <- getPostBuild
-    case traceShowId s of
+    case s of
       FeedSelected -> Client.feed
         tokDyn
         (constDyn QNone)
@@ -110,9 +109,7 @@ homePage = elClass "div" "home-page" $ mdo
       elClass "div" "sidebar" $ do
         el "p" $ text "Popular Tags"
         elClass "div" "tag-list" $ do
-          tagSelectEDyn <- simpleList (unNamespace <$> tagsDyn) tagPill
-          let tagSelectE = switchDyn $  leftmost <$> tagSelectEDyn
-          tellEvent $ (:|[]). TagSelected <$> tagSelectE
+          void $ simpleList (unNamespace <$> tagsDyn) tagPill
   pure ()
 
   where
@@ -121,4 +118,8 @@ homePage = elClass "div" "home-page" $ mdo
             & elementConfig_eventSpec %~ addEventSpecFlags (Proxy :: Proxy (DomBuilderSpace m)) Click (\_ -> preventDefault)
             & elementConfig_initialAttributes .~ ("class" =: "tag-pill tag-default" <> "href" =: "")
       (e, _) <- element "a" cfg $ dynText tDyn
-      pure $ current tDyn <@ domEvent Click e
+
+      -- We'll gloss over this for now. But you can read this as:
+      -- When the button is clicked, tag the event with the current value of the tDyn text.
+      -- And then wrap it up in a Non empty list of HomeSelectedEvents (a list because EventWriter needs a semigroup)
+      tellEvent $ pure . TagSelected <$> current tDyn <@ domEvent Click e
