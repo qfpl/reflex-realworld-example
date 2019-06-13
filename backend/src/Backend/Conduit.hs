@@ -7,24 +7,25 @@ module Backend.Conduit
 
 import Control.Lens hiding (Context, (??))
 
-import           Control.Error              ((??))
-import           Control.Monad              (when)
-import           Control.Monad.Except       (ExceptT (ExceptT), runExceptT, throwError, withExceptT)
-import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Reader       (ReaderT, runReaderT)
-import           Crypto.JOSE.JWK            (JWK)
-import           Data.Maybe                 (fromMaybe)
-import           Data.Pool                  (Pool, createPool, withResource)
-import qualified Data.Set                   as Set
-import           Data.Text                  (Text, pack)
-import           Data.Text.Encoding         (encodeUtf8)
-import           Database.Beam              (primaryKey)
-import           Database.PostgreSQL.Simple (Connection, close)
-import           Servant                    ((:<|>) ((:<|>)), Context ((:.), EmptyContext),
-                                             NoContent (NoContent), Server)
-import           Servant.Auth.Server        (AuthResult (Authenticated, Indefinite), CookieSettings,
-                                             JWTSettings, defaultCookieSettings, defaultJWTSettings)
-import           Snap.Core                  (Snap)
+import           Control.Error                    ((??))
+import           Control.Monad                    (when)
+import           Control.Monad.Except             (ExceptT (ExceptT), runExceptT, throwError, withExceptT)
+import           Control.Monad.IO.Class           (MonadIO, liftIO)
+import           Control.Monad.Reader             (ReaderT, runReaderT)
+import           Crypto.JOSE.JWK                  (JWK)
+import           Data.Maybe                       (fromMaybe)
+import           Data.Pool                        (Pool, createPool, withResource)
+import qualified Data.Set                         as Set
+import           Data.Text                        (Text, pack)
+import           Data.Text.Encoding               (encodeUtf8)
+import           Database.Beam                    (primaryKey)
+import           Database.PostgreSQL.Simple       (Connection, close)
+import           Obelisk.ExecutableConfig.Backend (BackendConfigsT)
+import           Servant                          ((:<|>) ((:<|>)), Context ((:.), EmptyContext),
+                                                   NoContent (NoContent), Server)
+import           Servant.Auth.Server              (AuthResult (Authenticated, Indefinite), CookieSettings,
+                                                   JWTSettings, defaultCookieSettings, defaultJWTSettings)
+import           Snap.Core                        (Snap)
 
 
 import           Backend.Conduit.Claim                     (Claim (Claim), deriveToken)
@@ -50,11 +51,11 @@ data ConduitServerEnv = ConduitServerEnv
   }
 makeLenses ''ConduitServerEnv
 
-type ConduitServerM   = ReaderT ConduitServerEnv Snap
+type ConduitServerM   = ReaderT ConduitServerEnv (BackendConfigsT Snap)
 type ConduitServerDbM = ConduitErrorsT (ReaderT Connection IO) --Concrete type for DB queries
 type ConduitServerContext = '[CookieSettings, JWTSettings]
 
-runConduitServerM :: ConduitServerEnv -> ConduitServerM a -> Snap a
+runConduitServerM :: ConduitServerEnv -> ConduitServerM a -> BackendConfigsT Snap a
 runConduitServerM e = flip runReaderT e
 
 mkContext :: JWTSettings -> Context ConduitServerContext

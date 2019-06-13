@@ -10,14 +10,10 @@ import Prelude       hiding (id, (.))
 
 import           Control.Categorical.Bifunctor (bimap)
 import           Control.Category              (id, (.))
-import           Control.Monad.IO.Class        (MonadIO, liftIO)
 import           Data.Functor.Identity         (Identity)
 import           Data.Functor.Sum              (Sum (InL, InR))
 import           Data.Text                     (Text)
-import qualified Data.Text                     as T
-import qualified Obelisk.ExecutableConfig      as ObConfig
 import           Obelisk.Route.TH              (deriveRouteComponent)
-
 
 newtype DocumentSlug = DocumentSlug { unDocumentSlug :: Text } deriving (Eq, Ord, Show)
 makeWrapped ''DocumentSlug
@@ -60,13 +56,6 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         let profileRouteEncoder = pathComponentEncoder $ \case
               ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
         in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) )
-
-getAppRoute :: MonadIO m => m Text
-getAppRoute = do
-    mroute <- liftIO $ ObConfig.get "config/common/route"
-    case mroute of
-      Nothing -> fail "Error getAppRoute: config/common/route not defined"
-      Just r  -> return $ T.dropWhileEnd (== '/') $ T.strip r
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute

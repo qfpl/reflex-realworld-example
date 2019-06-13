@@ -191,11 +191,7 @@ comments slugDyn = mdo
   newEE <- dyn $ maybe (pure never) addCommentWidget <$> tokenDyn
   newCommentE <- switchHold never newEE
   -- This takes the Map Int Comment and displays them all
-  deleteComment :: Event t (Map.Map Int ()) <- listViewWithKey commentsMapDyn $ \cId commentDupeDyn -> do
-    -- But we have to filter out duplicate updates to prevent
-    -- setting the text in unnecessarily.
-    -- DISCUSS! :)
-    commentDyn <- holdUniqDyn commentDupeDyn
+  deleteComment :: Event t (Map.Map Int ()) <- listViewWithKey commentsMapDyn $ \cId commentDyn -> do
     let profileDyn = Comment.author <$> commentDyn
     elClass "div" "card" $ do
       elClass "div" "card-block" $ do

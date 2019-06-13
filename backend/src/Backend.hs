@@ -4,32 +4,32 @@ module Backend where
 
 import Control.Lens
 
-import qualified Crypto.JOSE              as HOSE
-import qualified Crypto.JOSE.Types        as HOSE
-import Control.Monad.IO.Class (liftIO)
-import           Data.Maybe               (maybe)
-import           Data.Text                (Text)
-import qualified Data.Text                as T
-import           Data.Text.Encoding       (encodeUtf8)
+import           Control.Monad.IO.Class           (liftIO)
+import qualified Crypto.JOSE                      as HOSE
+import qualified Crypto.JOSE.Types                as HOSE
+import           Data.Maybe                       (maybe)
+import           Data.Text                        (Text, unpack)
+import qualified Data.Text                        as T
+import           Data.Text.Encoding               (encodeUtf8)
 import           Obelisk.Backend
-import           Obelisk.ExecutableConfig (get)
+import           Obelisk.ExecutableConfig.Backend (HasBackendConfigs, getBackendConfig)
 import           Obelisk.Route
-import           Servant                  (serveSnapWithContext)
-import           SetCookieOrphan          ()
+import           Servant                          (serveSnapWithContext)
+import           SetCookieOrphan                  ()
 
-import Backend.Conduit    (jwtSettings, mkContext, mkEnv, runConduitServerM, server)
-import Common.Conduit.Api (api)
-import Common.Route       (BackendRoute (..), FrontendRoute, backendRouteEncoder)
+import Backend.Conduit          (jwtSettings, mkContext, mkEnv, runConduitServerM, server)
 import Backend.Conduit.Database (openConduitDb)
+import Common.Conduit.Api       (api)
+import Common.Route             (BackendRoute (..), FrontendRoute, backendRouteEncoder)
 
-getYolo :: Text -> IO Text
-getYolo l = maybe (error . T.unpack $ "Please fill in config: " <> l) T.strip <$> get l
+getYolo :: HasBackendConfigs m => Text -> m Text
+getYolo l = maybe (error . unpack $ "Please fill in config: config/backend/" <> l) T.strip <$> getBackendConfig l
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
   { _backend_run = \serve -> do
-      pgConnStr <- getYolo "config/backend/pgConnStr"
-      jwtKey    <- getYolo "config/backend/jwtKey"
+      pgConnStr <- getYolo "pgConnStr"
+      jwtKey    <- getYolo "jwtKey"
       let jwk   =
                HOSE.fromKeyMaterial
              . HOSE.OctKeyMaterial
