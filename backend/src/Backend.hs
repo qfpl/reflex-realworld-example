@@ -12,24 +12,27 @@ import           Data.Text                        (Text, unpack)
 import qualified Data.Text                        as T
 import           Data.Text.Encoding               (encodeUtf8)
 import           Obelisk.Backend
-import           Obelisk.ExecutableConfig.Backend (HasBackendConfigs, getBackendConfig)
 import           Obelisk.Route
 import           Servant                          (serveSnapWithContext)
-import           SetCookieOrphan                  ()
 
 import Backend.Conduit          (jwtSettings, mkContext, mkEnv, runConduitServerM, server)
 import Backend.Conduit.Database (openConduitDb)
 import Common.Conduit.Api       (api)
 import Common.Route             (BackendRoute (..), FrontendRoute, backendRouteEncoder)
+import qualified Obelisk.ExecutableConfig.Lookup as ExeCfg
+import Data.Map as Map
+import qualified Data.ByteString as BS
+import Data.Text.Encoding (decodeUtf8)
 
-getYolo :: HasBackendConfigs m => Text -> m Text
-getYolo l = maybe (error . unpack $ "Please fill in config: config/backend/" <> l) T.strip <$> getBackendConfig l
+getYolo :: Text -> Map Text BS.ByteString -> Text
+getYolo l cfgs = maybe (error . T.unpack $ "Please fill in config: config/" <> l) (T.strip . decodeUtf8) (Map.lookup l cfgs)
 
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
   { _backend_run = \serve -> do
-      pgConnStr <- getYolo "pgConnStr"
-      jwtKey    <- getYolo "jwtKey"
+      cfgs <- liftIO ExeCfg.getConfigs
+      let jwtKey = getYolo "backend/jwtKey" cfgs
+      let pgConnStr = getYolo "backend/pgConnStr" cfgs
       let jwk   =
                HOSE.fromKeyMaterial
              . HOSE.OctKeyMaterial

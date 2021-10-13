@@ -1,7 +1,7 @@
 {
-  "url": "https://github.com/benkolera/servant-auth.git",
-  "rev": "d2dbe8e5ed1df232245ea11f1a75249fac077609",
-  "date": "2019-05-03T16:18:26+10:00",
-  "sha256": "02lzmi18scm8wxg9ggzd9sxmrvab3h51gccmjsx5m1g77an7cgjr",
-  "fetchSubmodules": false
-}
+    "url": "https://github.com/benkolera/servant-auth.git",
+    "rev": "d2dbe8e5ed1df232245ea11f1a75249fac077609",
+    "date": "2019-05-03T16:18:26+10:00",
+    "sha256": "02lzmi18scm8wxg9ggzd9sxmrvab3h51gccmjsx5m1g77an7cgjr",
+    "fetchSubmodules": false
+  }

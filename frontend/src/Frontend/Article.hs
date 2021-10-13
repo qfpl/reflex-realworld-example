@@ -38,6 +38,7 @@ import qualified Frontend.Conduit.Client                   as Client
 import           Frontend.FrontendStateT
 import           Frontend.Utils                            (buttonClass, routeLinkClass, routeLinkDynClass,
                                                             showText)
+import Reflex.Dom (Prerender)
 
 article
   :: forall t m js s
@@ -86,6 +87,7 @@ articleMeta
      , SetRoute t (R FrontendRoute) m
      , PostBuild t m
      , MonadHold t m
+     , Prerender js t m
      )
   => Article.Article
   -> m ()
@@ -190,8 +192,8 @@ comments slugDyn = mdo
 
   newEE <- dyn $ maybe (pure never) addCommentWidget <$> tokenDyn
   newCommentE <- switchHold never newEE
-  -- This takes the Map Int Comment and displays them all
-  deleteComment :: Event t (Map.Map Int ()) <- listViewWithKey commentsMapDyn $ \cId commentDyn -> do
+  -- This takes the Map Integer Comment and displays them all
+  deleteComment :: Event t (Map.Map Integer ()) <- listViewWithKey commentsMapDyn $ \cId commentDyn -> do
     let profileDyn = Comment.author <$> commentDyn
     elClass "div" "card" $ do
       elClass "div" "card-block" $ do

@@ -21,16 +21,17 @@ import Database.PostgreSQL.Simple      (Connection)
 import           Backend.Conduit.Database          (ConduitDb (..), conduitDb, rowList)
 import           Backend.Conduit.Database.Tags.Tag (Tag, TagId, TagT (Tag))
 import qualified Backend.Conduit.Database.Tags.Tag as Tag
+import           Control.Monad.Fail ( MonadFail )
 
 query
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => m [Tag]
 query = do
   conn <- ask
   runSelect conn (select (all_ (conduitTags conduitDb))) rowList
 
 create
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Set Text
   -> m [Tag]
 create names = do

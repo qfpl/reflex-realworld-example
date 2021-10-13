@@ -13,7 +13,7 @@ import           GHC.Generics (Generic)
 
 
 data Profile = Profile
-  { id        :: Int
+  { id        :: Integer
   , username  :: Text
   , bio       :: Text
   , image     :: Maybe Text

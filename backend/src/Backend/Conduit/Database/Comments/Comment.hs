@@ -18,7 +18,7 @@ import Backend.Conduit.Database.Articles.Article (ArticleT)
 import Backend.Conduit.Database.Users.User       (UserT)
 
 data CommentT f = Comment
-  { id        :: Columnar f Int
+  { id        :: Columnar f Integer
   , createdAt :: Columnar f UTCTime
   , updatedAt :: Columnar f UTCTime
   , body      :: Columnar f Text
@@ -35,7 +35,7 @@ deriving instance Show Comment
 
 instance Table CommentT where
   data PrimaryKey CommentT f = CommentId
-    { unCommentId :: Columnar f Int
+    { unCommentId :: Columnar f Integer
     }
   primaryKey = CommentId . id
 

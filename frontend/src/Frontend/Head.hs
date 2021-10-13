@@ -17,7 +17,7 @@ styleLink href =
 
 data FontType = Light | LightItalic | Regular | SemiBold | SemiBoldItalic | Bold | BoldItalic deriving (Eq, Ord, Enum, Show)
 
-htmlHead :: (DomBuilder t m) => m ()
+htmlHead :: ( DomBuilder t m) => m ()
 htmlHead = do
   el "title" $ text "Conduit"
   -- these are not the typesafe links so that the fonts load relatively to the css.
@@ -28,7 +28,7 @@ htmlHead = do
     , ("Source Serif Pro",[Regular, Bold])
     , ("Titillium Web",[Regular, Bold])
     ]
-  styleLink (static @"main.css")
+  styleLink "static/main.css"
 
 gfontsFontFamily :: DomBuilder t m => Text -> [FontType] -> m ()
 gfontsFontFamily ffName = traverse_ (gfontsFontFace ffName)

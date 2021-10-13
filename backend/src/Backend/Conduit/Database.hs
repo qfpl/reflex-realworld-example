@@ -16,7 +16,7 @@ import           Data.Conduit               (ConduitT, (.|))
 import qualified Data.Conduit               as Conduit
 import qualified Data.Conduit.List          as Conduit
 import           Database.Beam              (Database, DatabaseSettings, MonadIO, TableEntity, dbModification,
-                                             defaultDbSettings, fieldNamed, liftIO, modifyTable,
+                                             defaultDbSettings, fieldNamed, liftIO, modifyEntityName, modifyTableFields,
                                              tableModification, withDbModification)
 import           Database.Beam.Postgres     (Postgres)
 import           Database.PostgreSQL.Simple (Connection, connectPostgreSQL)
@@ -57,13 +57,13 @@ conduitDb =
   defaultDbSettings `withDbModification`
   dbModification
     { conduitArticles =
-        modifyTable id $
+        modifyEntityName id <> modifyTableFields
         tableModification
           { Article.createdAt = fieldNamed "created_at"
           , Article.updatedAt = fieldNamed "updated_at"
           }
     , conduitComments =
-        modifyTable id $
+        modifyEntityName id <> modifyTableFields
         tableModification
           { Comment.createdAt = fieldNamed "created_at"
           , Comment.updatedAt = fieldNamed "updated_at"

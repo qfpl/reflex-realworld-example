@@ -16,5 +16,5 @@ import Database.Beam.Postgres.Full
 import Database.Beam.Postgres.Syntax
 import Database.Beam.Query.Internal
 
-type PgQExpr = QExpr PgExpressionSyntax
-type PgQAgg = QAgg PgExpressionSyntax
+type PgQExpr = QExpr Postgres
+type PgQAgg = QAgg Postgres

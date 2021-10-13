@@ -11,11 +11,11 @@ import           Common.Conduit.Api.Articles.Article (Article)
 
 data Articles = Articles
   { articles      :: [Article]
-  , articlesCount :: Int
+  , articlesCount :: Integer
   } deriving Show
 
 fromList :: [Article] -> Articles
-fromList = Articles <$> id <*> length
+fromList = Articles <$> id <*> (toInteger . length)
 
 deriving instance Generic Articles
 deriving instance ToJSON Articles

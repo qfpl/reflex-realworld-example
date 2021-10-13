@@ -39,13 +39,13 @@ data ProfileRoute :: * -> * where
   ProfileRoute_Favourites :: ProfileRoute ()
 
 backendRouteEncoder
-  :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
-backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
-  pathComponentEncoder $ \case
-    InL backendRoute -> case backendRoute of
+  :: Encoder (Either Text) Identity (R (FullRoute BackendRoute FrontendRoute)) PageName
+backendRouteEncoder =  mkFullRouteEncoder
+  (FullRoute_Backend BackendRoute_Missing :/ ())
+  (\case
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_Api     -> PathSegment "api" $ id
-    InR obeliskRoute -> obeliskRouteSegment obeliskRoute $ \case
+      BackendRoute_Api     -> PathSegment "api" $ id)
+  (\case
       FrontendRoute_Home -> PathEnd $ unitEncoder mempty
       FrontendRoute_Login -> PathSegment "login" $ unitEncoder mempty
       FrontendRoute_Register -> PathSegment "register" $ unitEncoder mempty
@@ -55,7 +55,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       FrontendRoute_Profile -> PathSegment "profile" $
         let profileRouteEncoder = pathComponentEncoder $ \case
               ProfileRoute_Favourites -> PathSegment "favourites" $ unitEncoder mempty
-        in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) )
+        in ( pathSegmentEncoder . bimap unwrappedEncoder (maybeEncoder (unitEncoder mempty) profileRouteEncoder ) ))
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute

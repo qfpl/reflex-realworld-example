@@ -8,7 +8,7 @@ import Data.Time                   (UTCTime)
 import GHC.Generics                (Generic)
 
 data Comment = Comment
-  { id        :: Int
+  { id        :: Integer
   , createdAt :: UTCTime
   , updatedAt :: UTCTime
   , body      :: Text

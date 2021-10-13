@@ -188,7 +188,7 @@ deleteComment
   :: (Reflex t, Applicative m, Prerender js t m)
   => Dynamic t (Maybe Token)
   -> Dynamic t (Either Text Text)
-  -> Dynamic t (Either Text Int)
+  -> Dynamic t (Either Text Integer)
   -> Event t ()
   -> m (ClientRes t NoContent)
 deleteComment tokenDyn slugDyn commentIdDyn submitE =

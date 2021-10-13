@@ -5,7 +5,7 @@
 module Frontend.LocalStorageKey where
 
 import Data.Aeson            (FromJSON (..), ToJSON (..))
-import Data.Dependent.Map    (Some (This))
+import Data.Some
 import Data.Functor.Identity (Identity (Identity))
 import Data.GADT.Aeson       (FromJSONTag (..), GKey (..), ToJSONTag (..))
 import Data.GADT.Compare.TH  (deriveGCompare, deriveGEq)
@@ -27,14 +27,14 @@ deriveGCompare ''LocalStorageTag
 deriveGShow ''LocalStorageTag
 
 instance GKey LocalStorageTag where
-  toKey (This LocalStorageJWT) = "conduit_jwt"
+  toKey (Some LocalStorageJWT) = "conduit_jwt"
 
   fromKey t =
     case t of
-      "conduit_jwt" -> Just (This LocalStorageJWT)
+      "conduit_jwt" -> Just (Some LocalStorageJWT)
       _             -> Nothing
 
-  keys _ = [This LocalStorageJWT]
+  keys _ = [Some LocalStorageJWT]
 
 instance ToJSONTag LocalStorageTag Identity where
   toJSONTagged LocalStorageJWT (Identity x) = toJSON x
