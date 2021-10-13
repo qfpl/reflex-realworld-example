@@ -17,7 +17,7 @@ import GHC.Generics  (Generic)
 import Backend.Conduit.Database.Users.User (UserT)
 
 data ArticleT f = Article
-  { id          :: Columnar f Int
+  { id          :: Columnar f Integer
   , slug        :: Columnar f Text
   , title       :: Columnar f Text
   , description :: Columnar f Text
@@ -38,7 +38,7 @@ deriving instance Ord Article
 
 instance Table ArticleT where
   data PrimaryKey ArticleT f = ArticleId
-    { unArticleId :: Columnar f Int
+    { unArticleId :: Columnar f Integer
     }
   primaryKey = ArticleId . id
 

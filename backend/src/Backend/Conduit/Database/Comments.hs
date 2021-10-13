@@ -15,7 +15,7 @@ import Data.Functor                    (void)
 import Data.Maybe                      (fromMaybe)
 import Data.Text                       (Text)
 import Data.Time                       (UTCTime, getCurrentTime)
-import Database.Beam.Postgres.Extended (PgInsertReturning, PgQExpr, PgSelectSyntax, Q, all_, default_, delete,
+import Database.Beam.Postgres.Extended (PgInsertReturning, PgQExpr, Postgres, Q, all_, default_, delete,
                                         guard_, insertExpressions, insertReturning, onConflictDefault,
                                         primaryKey, runDelete, runInsertReturning, runSelect, select, val_,
                                         (==.))
@@ -33,6 +33,7 @@ import           Backend.Conduit.Database.Users.User       (UserId)
 import qualified Backend.Conduit.Database.Users.User       as User
 import           Common.Conduit.Api.Articles.Comment       (Comment (Comment))
 import           Common.Conduit.Api.Profiles.Profile       (Profile (Profile))
+import           Control.Monad.Fail ( MonadFail )
 
 insertComment
   :: UserId -> ArticleId -> Text -> UTCTime -> PgInsertReturning Persisted.Comment
@@ -58,6 +59,7 @@ create
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
   => UserId
   -> ArticleId
@@ -73,7 +75,7 @@ create authorId articleId body = do
       singleRow
   unsafeFind (Just authorId) (Persisted.id inserted)
 
-destroy :: (MonadIO m, MonadReader Connection m) => Int -> m ()
+destroy :: (MonadIO m, MonadReader Connection m) => Integer -> m ()
 destroy comment = do
   conn <- ask
   void $ runDelete conn $ delete (conduitComments conduitDb) $ \candidate ->
@@ -106,7 +108,7 @@ toComment =
 
 selectComments
   :: Maybe UserId
-  -> Q PgSelectSyntax ConduitDb s (CommentRow s)
+  -> Q Postgres ConduitDb s (CommentRow s)
 selectComments currentUserId = do
   comment <- all_ (conduitComments conduitDb)
   profile <- selectProfiles currentUserId
@@ -115,17 +117,17 @@ selectComments currentUserId = do
 
 selectComment
   :: Maybe UserId
-  -> Int
-  -> Q PgSelectSyntax ConduitDb s (CommentRow s)
+  -> Integer
+  -> Q Postgres ConduitDb s (CommentRow s)
 selectComment currentUserId commentId = do
   commentRow <- selectComments currentUserId
   guard_ (Persisted.id (commentRow ^. _1) ==. val_ commentId)
   pure commentRow
 
 find
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Maybe UserId
-  -> Int
+  -> Integer
   -> m (Maybe Comment)
 find currentUserId commentId = do
   conn <- ask
@@ -136,9 +138,10 @@ unsafeFind
      , MonadIO m
      , MonadBaseControl IO m
      , MonadError QueryError m
+     , MonadFail m
      )
   => Maybe UserId
-  -> Int
+  -> Integer
   -> m Comment
 unsafeFind currentUserId commentId = do
   conn <- ask
@@ -147,7 +150,7 @@ unsafeFind currentUserId commentId = do
 selectCommentsForArticle
   :: Maybe UserId
   -> Text
-  -> Q PgSelectSyntax ConduitDb s (CommentRow s)
+  -> Q Postgres ConduitDb s (CommentRow s)
 selectCommentsForArticle currentUserId slug = do
   commentRow <- selectComments currentUserId
   article <- all_ (conduitArticles conduitDb)
@@ -156,7 +159,7 @@ selectCommentsForArticle currentUserId slug = do
   pure commentRow
 
 forArticle
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Maybe UserId
   -> Text
   -> m [Comment]

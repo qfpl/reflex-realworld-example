@@ -14,7 +14,7 @@ import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
 import GHC.Generics  (Generic)
 
 data UserT f = User
-  { id       :: Columnar f Int
+  { id       :: Columnar f Integer
   , password :: Columnar f Text
   , email    :: Columnar f Text
   , username :: Columnar f Text
@@ -33,7 +33,7 @@ deriving instance Ord User
 
 instance Table UserT where
   data PrimaryKey UserT f = UserId
-    { unUserId :: Columnar f Int
+    { unUserId :: Columnar f Integer
     }
   primaryKey = UserId . id
 

@@ -70,7 +70,7 @@ data ArticleClient f t m = ArticleClient
     -> Event t ()
     -> m (Event t (f (ReqResult () (Namespace "comment" Comment))))
   , _articleCommentDelete
-    :: f (Dynamic t (Either Text Int))
+    :: f (Dynamic t (Either Text Integer))
     -> Event t ()
     -> m (Event t (f (ReqResult () NoContent)))
   }

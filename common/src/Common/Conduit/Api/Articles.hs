@@ -56,7 +56,7 @@ type ArticleApi token = (
         ReqBody '[JSON] (Namespace "comment" CreateComment)
         :> PostCreated '[JSON] (Namespace "comment" Comment)
       ) :<|> (
-        Capture "commentId" Int
+        Capture "commentId" Integer
         :>  DeleteNoContent '[JSON] NoContent)
       )
     )

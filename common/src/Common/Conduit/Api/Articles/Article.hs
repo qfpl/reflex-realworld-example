@@ -9,7 +9,7 @@ import Data.Time                   (UTCTime)
 import GHC.Generics                (Generic)
 
 data Article = Article
-  { id             :: Int
+  { id             :: Integer
   , slug           :: Text
   , title          :: Text
   , description    :: Text
@@ -18,7 +18,7 @@ data Article = Article
   , createdAt      :: UTCTime
   , updatedAt      :: UTCTime
   , favorited      :: Bool
-  , favoritesCount :: Int
+  , favoritesCount :: Integer
   , author         :: Profile
   } deriving Show
 

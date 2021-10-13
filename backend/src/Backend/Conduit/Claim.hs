@@ -20,7 +20,7 @@ import qualified Servant.Auth.Server     as ServantAuth
 import Backend.Conduit.Database.Users.User (PrimaryKey (unUserId), User)
 
 newtype Claim =
-  Claim { id :: Int }
+  Claim { id :: Integer }
   deriving (Generic)
 
 instance ToJSON Claim

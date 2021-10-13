@@ -36,7 +36,7 @@ import           Database.Beam.Postgres.Extended (HasSqlEqualityCheck, Nullable,
                                                   just_, leftJoin_, onConflictDefault, pgBoolOr, primaryKey,
                                                   references_, runDelete, runInsertReturning, runSelect,
                                                   runUpdateReturning, select, updateReturning, val_, (&&.),
-                                                  (<-.), (==.))
+                                                  (<-.), (==.), Postgres)
 import           Database.PostgreSQL.Simple      (Connection)
 
 import           Backend.Conduit.Database              (ConduitDb (conduitFollows, conduitUsers), QueryError,
@@ -53,6 +53,7 @@ import           Common.Conduit.Api.Users.Credentials  (Credentials)
 import qualified Common.Conduit.Api.Users.Credentials  as Credentials
 import           Common.Conduit.Api.Users.Registrant   (Registrant (Registrant))
 import qualified Common.Conduit.Api.Users.Registrant   as Registrant
+import           Control.Monad.Fail ( MonadFail )
 insertUser
   :: Registrant -> PgInsertReturning User
 insertUser reg
@@ -77,6 +78,7 @@ create
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
   => Registrant
   -> m User
@@ -89,12 +91,12 @@ updateUser
 updateUser userId updateU
   = updateReturning
     (conduitUsers conduitDb)
-    (\user -> catMaybes
-      [ (User.password user <-.) . val_ <$> UpdateUser.password updateU
-      , (User.email user <-.) . val_ <$> UpdateUser.email updateU
-      , (User.username user <-.) . val_ <$> UpdateUser.username updateU
-      , (User.bio user <-.) . val_ <$> UpdateUser.bio updateU
-      , (User.image user <-.) . val_ <$> pure (UpdateUser.image updateU)
+    (\user -> mconcat $ catMaybes
+      [ (User.password user <-. ) . val_ <$> UpdateUser.password updateU
+      , (User.email user <-. ) . val_ <$> UpdateUser.email updateU
+      , (User.username user <-. ) . val_ <$> UpdateUser.username updateU
+      , (User.bio user <-. ) . val_ <$> UpdateUser.bio updateU
+      , (User.image user <-. ) . val_ <$> pure (UpdateUser.image updateU)
       ]
     )
     ((val_ userId ==.) . primaryKey)
@@ -105,8 +107,9 @@ update
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
-  => Int
+  => Integer
   -> UpdateUser
   -> m User
 update userId updateU = do
@@ -121,6 +124,7 @@ follow
      , MonadIO m
      , MonadBaseControl IO m
      , MonadError QueryError m
+     , MonadFail m
      )
   => UserId
   -> UserId
@@ -167,7 +171,7 @@ makePassword value
   | otherwise = Compose $ Success <$> liftIO (encryptPassword value)
 
 usernameExists
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> m Bool
 usernameExists username = do
@@ -177,7 +181,7 @@ usernameExists username = do
     query = pure $ exists_ $ selectUserBy User.username (val_ username)
 
 emailExists
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> m Bool
 emailExists email = do
@@ -187,7 +191,7 @@ emailExists email = do
     query = pure $ exists_ $ selectUserBy User.email (val_ email)
 
 uniqueEmail
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 uniqueEmail value =
@@ -199,14 +203,14 @@ uniqueEmail value =
         else Success value
 
 makeEmail
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 makeEmail email =
   requiredText "email" email *> uniqueEmail email
 
 uniqueUsername
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 uniqueUsername value =
@@ -218,7 +222,7 @@ uniqueUsername value =
         else Success value
 
 makeUsername
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 makeUsername username =
@@ -229,6 +233,7 @@ validateRegistrant
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
+     , MonadFail m
      )
   => Registrant
   -> m Registrant
@@ -240,7 +245,7 @@ validateRegistrant reg =
     <*> makePassword (Registrant.password reg)
 
 makeUpdateEmail
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => User
   -> Text
   -> Compose m (Validation ValidationErrors) Text
@@ -249,7 +254,7 @@ makeUpdateEmail current value
   | otherwise = makeEmail value
 
 makeUpdateUsername
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => User
   -> Text
   -> Compose m (Validation ValidationErrors) Text
@@ -262,6 +267,7 @@ validateUpdateUser
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
+     , MonadFail m
      )
   => User
   -> UpdateUser
@@ -276,25 +282,25 @@ validateUpdateUser current uu =
     <*> pure (UpdateUser.image uu)
 
 selectUserBy
-  :: HasSqlEqualityCheck PgExpressionSyntax a
+  :: HasSqlEqualityCheck Postgres a
   => (UserT (PgQExpr s) -> PgQExpr s a)
   -> PgQExpr s a
-  -> Q PgSelectSyntax ConduitDb s (UserT (PgQExpr s))
+  -> Q Postgres ConduitDb s (UserT (PgQExpr s))
 selectUserBy f a = do
   user <- all_ (conduitUsers conduitDb)
   guard_ (f user ==. a)
   pure user
 
 find
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
-  => Int
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
+  => Integer
   -> m (Maybe User)
 find userId = do
   conn <- ask
   runSelect conn (select (selectUserBy User.id (val_ userId))) maybeRow
 
 findByEmail
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> m (Maybe User)
 findByEmail email = do
@@ -306,7 +312,7 @@ encryptedPassMatches a b =
   verifyPass' (Pass (encodeUtf8 a)) (EncryptedPass (encodeUtf8 b))
 
 findByCredentials
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Credentials
   -> m (Maybe User)
 findByCredentials credentials = do
@@ -317,7 +323,7 @@ findByCredentials credentials = do
 
 follows
   :: UserT (PgQExpr s)
-  -> Q PgSelectSyntax ConduitDb s (FollowT (Nullable (PgQExpr s)))
+  -> Q Postgres ConduitDb s (FollowT (Nullable (PgQExpr s)))
 follows author =
   leftJoin_
     (all_ (conduitFollows conduitDb))
@@ -335,7 +341,7 @@ type ProfileResult =
 
 selectProfiles
   :: Maybe UserId
-  -> Q PgSelectSyntax ConduitDb s (ProfileRow s)
+  -> Q Postgres ConduitDb s (ProfileRow s)
 selectProfiles currentUserId =
   aggregate_ (\(user, following) -> (group_ user, pgBoolOr following)) $ do
     user <- all_ (conduitUsers conduitDb)
@@ -350,7 +356,7 @@ selectProfiles currentUserId =
 selectProfile
   :: Maybe UserId
   -> Text
-  -> Q PgSelectSyntax ConduitDb s (ProfileRow s)
+  -> Q Postgres ConduitDb s (ProfileRow s)
 selectProfile currentUserId username = do
   profile <- selectProfiles currentUserId
   guard_ $ User.username (profile ^. _1) ==. val_ username
@@ -366,7 +372,7 @@ toProfile =
     <*> (fromMaybe False . view _2)
 
 findProfile
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Maybe UserId
   -> Text
   -> m (Maybe Profile)

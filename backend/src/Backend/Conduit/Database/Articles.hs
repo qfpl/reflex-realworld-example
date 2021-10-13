@@ -36,7 +36,7 @@ import           Data.Time                       (UTCTime, getCurrentTime)
 import           Data.Validation                 (Validation (Failure, Success), validation)
 import           Data.Vector                     (Vector)
 import qualified Data.Vector                     as Vector
-import           Database.Beam.Postgres.Extended (Nullable, PgInsertReturning, PgQExpr, PgSelectSyntax,
+import           Database.Beam.Postgres.Extended (Nullable, PgInsertReturning, PgQExpr, Postgres,
                                                   PgUpdateReturning, Q, aggregate_, all_, array_,
                                                   conflictingFields, count_, default_, delete, desc_, exists_,
                                                   group_, guard_, in_, insert, insertExpressions,
@@ -68,6 +68,7 @@ import           Common.Conduit.Api.Articles.Article          (Article (Article)
 import qualified Common.Conduit.Api.Articles.Article          as Article
 import           Common.Conduit.Api.Articles.Attributes       (ArticleAttributes (..))
 import           Common.Conduit.Api.Profiles.Profile          (Profile (Profile))
+import           Control.Monad.Fail ( MonadFail )
 
 insertArticle
   :: UserId -> UTCTime -> ArticleAttributes Identity -> PgInsertReturning Persisted.Article
@@ -95,6 +96,7 @@ create
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
   => UserId
   -> ArticleAttributes Identity
@@ -111,7 +113,7 @@ create authorId attributes = do
   unsafeFind (Just authorId) (Persisted.slug inserted)
 
 find
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Maybe UserId
   -> Text
   -> m (Maybe Article)
@@ -125,6 +127,7 @@ unsafeFind
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
   => Maybe UserId
   -> Text
@@ -139,11 +142,11 @@ updateArticle
 updateArticle currentTime currentSlug ArticleAttributes { title, description, body }
   = updateReturning
     (conduitArticles conduitDb)
-    (\article -> catMaybes
-      [ (Persisted.slug article <-.) . val_  . generateSlug <$> title
-      , (Persisted.title article <-.) . val_ <$> title
-      , (Persisted.description article <-.) . val_ <$> description
-      , (Persisted.body article <-.) . val_ <$> body
+    (\article -> mconcat $ catMaybes
+      [ (Persisted.slug article <-. ) . val_  . generateSlug <$> title
+      , (Persisted.title article <-. ) . val_ <$> title
+      , (Persisted.description article <-. ) . val_ <$> description
+      , (Persisted.body article <-. ) . val_ <$> body
       , Just (Persisted.updatedAt article <-. val_ currentTime)
       ]
     )
@@ -155,6 +158,7 @@ update
      , MonadError QueryError m
      , MonadIO m
      , MonadBaseControl IO m
+     , MonadFail m
      )
   => UserId
   -> Text
@@ -172,7 +176,7 @@ update authorId currentSlug attributes = do
   unsafeFind (Just authorId) (Persisted.slug updated)
 
 assignTags
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Persisted.ArticleId
   -> Set Text
   -> m ()
@@ -199,7 +203,7 @@ deleteTags articleId = do
       ((val_ articleId ==.) . ArticleTag.article)
 
 replaceTags
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Persisted.ArticleId
   -> Set Text
   -> m ()
@@ -260,7 +264,7 @@ type ArticleResult =
   , Maybe Bool
   )
 
-selectArticles :: Maybe UserId -> Q PgSelectSyntax ConduitDb s (ArticleRow s)
+selectArticles :: Maybe UserId -> Q Postgres ConduitDb s (ArticleRow s)
 selectArticles currentUserId =
   aggregate_
       (\(article, tag, favorite', author, following) ->
@@ -318,7 +322,7 @@ selectFilteredArticles
   -> Set Text
   -> Set Text
   -> Set Text
-  -> Q PgSelectSyntax ConduitDb s (ArticleRow s)
+  -> Q Postgres ConduitDb s (ArticleRow s)
 selectFilteredArticles currentUserId limit offset usernames tags favorited
   = orderBy_ (desc_ . Persisted.createdAt . view _1)
     $ limit_ limit
@@ -341,7 +345,7 @@ selectFilteredArticles currentUserId limit offset usernames tags favorited
         pure article
 
 all
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => Maybe UserId
   -> Integer
   -> Integer
@@ -369,14 +373,14 @@ selectFeedArticles
   :: UserId
   -> Integer
   -> Integer
-  -> Q PgSelectSyntax ConduitDb s (ArticleRow s)
+  -> Q Postgres ConduitDb s (ArticleRow s)
 selectFeedArticles currentUserId limit offset = do
   article <- selectFilteredArticles (Just currentUserId) limit offset mempty mempty mempty
   guard_ $ article ^. _6 ==. val_ (Just True)
   pure article
 
 feed
-  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m)
+  :: (MonadReader Connection m, MonadIO m, MonadBaseControl IO m, MonadFail m)
   => UserId
   -> Integer
   -> Integer
@@ -393,7 +397,7 @@ feed currentUserId limit offset = do
 selectArticle
   :: Maybe UserId
   -> Text
-  -> Q PgSelectSyntax ConduitDb s (ArticleRow s)
+  -> Q Postgres ConduitDb s (ArticleRow s)
 selectArticle currentUserId slug = do
   article <- selectArticles currentUserId
   guard_ $ Persisted.slug (article ^. _1) ==. val_ slug
@@ -401,7 +405,7 @@ selectArticle currentUserId slug = do
 
 selectFavorites ::
      ArticleT (PgQExpr s)
-  -> Q PgSelectSyntax ConduitDb s (FavoriteT (Nullable (PgQExpr s)))
+  -> Q Postgres ConduitDb s (FavoriteT (Nullable (PgQExpr s)))
 selectFavorites article =
   leftJoin_
     (all_ (conduitFavorites conduitDb))
@@ -409,7 +413,7 @@ selectFavorites article =
 
 selectTags
   :: ArticleT (PgQExpr s)
-  -> Q PgSelectSyntax ConduitDb s (ArticleTagT (Nullable (PgQExpr s)))
+  -> Q Postgres ConduitDb s (ArticleTagT (Nullable (PgQExpr s)))
 selectTags article =
   leftJoin_
     (all_ (conduitArticleTags conduitDb))
@@ -420,21 +424,21 @@ generateSlug = Text.intercalate "-" . Text.words . Text.toLower . Text.filter
   ((||) <$> Char.isAlphaNum <*> Char.isSpace)
 
 slugExists
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> m Bool
 slugExists slug = do
   conn <- ask
   fromMaybe False <$> runSelect conn (select query) maybeRow
   where
-    query :: Q PgSelectSyntax ConduitDb s (PgQExpr s Bool)
+    query :: Q Postgres ConduitDb s (PgQExpr s Bool)
     query = pure $ exists_ $ do
       article <- all_ (conduitArticles conduitDb)
       guard_ (Persisted.slug article ==. val_ slug)
       pure article
 
 titleGeneratingUniqueSlug
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 titleGeneratingUniqueSlug title =
@@ -449,7 +453,7 @@ titleGeneratingUniqueSlug title =
     slug = generateSlug title
 
 makeTitle
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Compose m (Validation ValidationErrors) Text
 makeTitle title =
@@ -460,6 +464,7 @@ validateAttributesForInsert
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
+     , MonadFail m
      )
   => ArticleAttributes Identity
   -> m (ArticleAttributes Identity)
@@ -472,7 +477,7 @@ validateAttributesForInsert ArticleAttributes {..} =
     <*> pure tagList
 
 makeUpdateTitle
-  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m)
+  :: (MonadIO m, MonadReader Connection m, MonadBaseControl IO m, MonadFail m)
   => Text
   -> Text
   -> Compose m (Validation ValidationErrors) Text
@@ -485,6 +490,7 @@ validateAttributesForUpdate
      , MonadReader Connection m
      , MonadBaseControl IO m
      , MonadError ValidationErrors m
+     , MonadFail m
      )
   => Article
   -> ArticleAttributes Maybe

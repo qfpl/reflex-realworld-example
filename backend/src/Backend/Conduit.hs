@@ -20,7 +20,6 @@ import           Data.Text                        (Text, pack)
 import           Data.Text.Encoding               (encodeUtf8)
 import           Database.Beam                    (primaryKey)
 import           Database.PostgreSQL.Simple       (Connection, close)
-import           Obelisk.ExecutableConfig.Backend (BackendConfigsT)
 import           Servant                          ((:<|>) ((:<|>)), Context ((:.), EmptyContext),
                                                    NoContent (NoContent), Server)
 import           Servant.Auth.Server              (AuthResult (Authenticated, Indefinite), CookieSettings,
@@ -51,11 +50,11 @@ data ConduitServerEnv = ConduitServerEnv
   }
 makeLenses ''ConduitServerEnv
 
-type ConduitServerM   = ReaderT ConduitServerEnv (BackendConfigsT Snap)
+type ConduitServerM   = ReaderT ConduitServerEnv Snap
 type ConduitServerDbM = ConduitErrorsT (ReaderT Connection IO) --Concrete type for DB queries
 type ConduitServerContext = '[CookieSettings, JWTSettings]
 
-runConduitServerM :: ConduitServerEnv -> ConduitServerM a -> BackendConfigsT Snap a
+runConduitServerM :: ConduitServerEnv -> ConduitServerM a -> Snap a
 runConduitServerM e = flip runReaderT e
 
 mkContext :: JWTSettings -> Context ConduitServerContext
